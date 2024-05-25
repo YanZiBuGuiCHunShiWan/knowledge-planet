@@ -1,9 +1,3 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
-</head>
-<body>
 ### 阶段一
 
 $\text{1.谈谈ChatGPT的优缺点}$
