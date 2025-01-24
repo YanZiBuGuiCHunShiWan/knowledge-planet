@@ -140,7 +140,7 @@ $$
 1. 再生性：对任意函数$f \in \mathcal H$和任意$\mathbf x \in \mathcal X$，有$f(x)=\langle f,k_{\mathbf x}\rangle_{\mathcal H}$。
 2. 核的内积性质：核函数本身的值通过点积表达：$K(\mathbf x,\mathbf x')=\langle k_\mathbf x,k_{\mathbf x'}\rangle_{\mathcal H}$。
 
-​	而现在我们需要验证一下公式2.12的定义是否能满足如上两个关键点，即内积的定义能使得运算满足公式2.10，证明如下：将$k_{\mathbf x}$与$k_{\mathbf {x'}}$展开到特征基$\set{\phi_i}_{i=0}^{\infin}$上：
+​	而现在我们需要验证一下公式$2.12$的定义是否能满足如上两个关键点，即内积的定义能使得运算满足公式$2.10$，证明如下：将$k_{\mathbf x}$与$k_{\mathbf {x'}}$展开到特征基$\set{\phi_i}_{i=0}^{\infin}$上：
 $$
 k_{\mathbf x}=\sum_{i=0}^{\infin}\lambda_i \phi_i(\mathbf x)\phi_i,\text{ } k_{\mathbf {x'}}=\sum_{i=0}^{\infin}\lambda_i \phi_i(\mathbf x')\phi_i .\tag{2.13}
 $$
@@ -175,9 +175,9 @@ $$
 
 > [!IMPORTANT]
 >
-> 1.什么是核的可再生性质？
+> **1.希尔伯特空间和再生核希尔伯特空间的不同？**
 >
-> 2.希尔伯特空间和再生核希尔伯特空间的不同？
+> ​	再生核希尔伯特空间是希尔伯特空间的基础上引入一个核函数。这个核函数$K(\mathbf x,\mathbf y)$是正定与对称的，使得函数$f(x)$的值可以由$f$与希尔伯特空间中的核向量的内积再生出来，即$f(x)=\langle f,K(\mathbf x,\cdot)\rangle_{\mathcal H}$。也就是说普通的希尔伯特空间只给了你一些向量，并没有特殊的工具帮助你计算函数在某一点的值。
 
 
 
@@ -218,3 +218,20 @@ $$
 [[5]Kernel methods in machine learning](https://members.cbio.mines-paristech.fr/~jvert/svn/kernelcourse/course/2021mva/inde\mathbf x.html)
 
 [[6]A Story of Basis and Kernel - Part II: Reproducing Kernel Hilbert Space](http://songc\mathbf y.net/posts/stor\mathbf y-of-basis-and-kernel-part-2/)
+
+
+
+# 附录-证明
+
+## A.Reize representation theorem
+
+
+
+## B.Mercer-Hilbert-Schmit theorems
+
+
+
+
+
+
+
