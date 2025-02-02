@@ -40,13 +40,9 @@
 
 ![RKHS-space](src\kernel mothods\RKHS-space.png)
 
-### 
-
-## 1.2 函数内积与傅里叶变化
 
 
-
-## 1.3 线性算子与线性泛函
+## 1.2 线性算子与线性泛函
 
 
 
@@ -144,7 +140,7 @@ $$
 $$
 k_{\mathbf x}=\sum_{i=0}^{\infin}\lambda_i \phi_i(\mathbf x)\phi_i,\text{ } k_{\mathbf {x'}}=\sum_{i=0}^{\infin}\lambda_i \phi_i(\mathbf x')\phi_i .\tag{2.13}
 $$
-​	代入公式2.12点积的定义，则点积计算的结果为：
+​	代入公式$2.12$点积的定义，则点积计算的结果为：
 $$
 \begin{aligned}\langle k_{\mathbf x},k_{\mathbf x'}\rangle_{\mathcal {H_K}}&=\sum_{i=0}^{\infin} {\lambda_i}^2\phi_i(\mathbf x)\phi(\mathbf x')/\lambda_i \\
 &=\sum_{i=0}^{\infin} {\lambda_i}\phi_i(\mathbf x)\phi(\mathbf x') \\
@@ -169,30 +165,120 @@ $$
 &=\sum_{i=0}^{\infin} \lambda_i^2/\lambda_i \phi_i(\mathbf x)\phi_i(\mathbf {x'}) \\
 &=K(\mathbf x,\mathbf {x'})\end{aligned}
 $$
-​	如此一来，我们便得到了所谓的”核技巧“，我们并不需要找到具体的映射函数，就可以计算出核函数在点$\mathbf x$与$\mathbf {x'}$处的值。如下给一个直观的例子，源自[[3]]()：
+​	如此一来，我们便得到了所谓的”核技巧“，我们并不需要找到具体的映射函数，就可以计算出核函数在点$\mathbf x$与$\mathbf {x'}$处的值。如下给出一个关于“异或”问题的例子：在二维平面中有四个散落的点，其中$(0,0)$与$(1,1)$是$\times$，$(0,1)$与$(1,0)$是$\operatorname{O}$，显然在二维平面中无法通过一条直线将图中的红色点与蓝色点完全分割，现在我们借助之前的结论，考虑一个特征映射如下：
+$$
+\begin{aligned} \Phi &: \mathbb R^2 \rightarrow \mathbb R^3 \\
+\mathbf x = \begin{bmatrix} 
+x_1 \\ 
+x_2 
+\end{bmatrix} &\mapsto \Phi(\mathbf x) = \begin{bmatrix} 
+x_1 \\ 
+x_2 \\
+(x_1-x_2)^2
+\end{bmatrix}
+\end{aligned}
+$$
+![image-20250131111318353](C:\Users\13664\AppData\Roaming\Typora\typora-user-images\image-20250131111318353.png)
 
-
-
+​	此时升维后的两组点分别变成了$(0,0,0),(1,1,0)$与$(1,0,1),(0,1,1)$，在这个三维空间中我们可以通过一个超平面$z=0.5$轻易地将这两组点分割。我们现在为$\mathbf x$定义一个函数$f(\mathbf x)$：
+$$
+f(\mathbf x)=ax_1+bx_2+c(x_1-x_2)^2
+$$
+​	这个函数将输入从二维空间映射到一维标量，我们可以将函数本身记作：
+$$
+f(\cdot)=\begin{bmatrix} 
+a \\ 
+b \\
+c 
+\end{bmatrix}
+\cdot
+$$
+​	一般用$f$表示，$f(\mathbf x)\in \mathbb R$的意思就是函数在点处的取值，可以通过内积计算得出：
+$$
+\begin{aligned}f(\mathbf x)&=f(\cdot)^{\top}\Phi(\mathbf x) \\
+&:=\langle f,\Phi(\mathbf x)\rangle_{\mathcal H} \end{aligned}
+$$
 > [!IMPORTANT]
 >
 > **1.希尔伯特空间和再生核希尔伯特空间的不同？**
 >
-> ​	再生核希尔伯特空间是希尔伯特空间的基础上引入一个核函数。这个核函数$K(\mathbf x,\mathbf y)$是正定与对称的，使得函数$f(x)$的值可以由$f$与希尔伯特空间中的核向量的内积再生出来，即$f(x)=\langle f,K(\mathbf x,\cdot)\rangle_{\mathcal H}$。也就是说普通的希尔伯特空间只给了你一些向量，并没有特殊的工具帮助你计算函数在某一点的值。
-
-
+> ​	再生核希尔伯特空间是希尔伯特空间的基础上引入一个核函数。这个核函数$K(\mathbf x,\mathbf y)$是正定与对称的，使得函数$f(x)$的值可以由$f$与希尔伯特空间中的核向量的内积再生出来，即$f(x)=\langle f,K(\mathbf x,\cdot)\rangle_{\mathcal H}$。也就是说普通的希尔伯特空间只给了一些向量，并没有特殊的工具帮助你计算函数在某一点的值。
 
 ## 2.3 傅里叶变换
 
+### 2.3.1  基
 
-
-
-
-
+​	对于两个向量$A$与$B$而言，向量内积可以反应两个向量的相似度，同时也代表 $A$在$B$方向上的投影长度与$B$的长度的乘积：
+$$
+\langle A,B\rangle=|A||B|\cos\theta
+$$
+​	而$A$在$B$方向上的投影的长度可以表示为：
+$$
+|A|\cos \theta=\frac{|A|\langle A,B \rangle}{|A||B|}=\frac{\langle A,B \rangle}{|B|}
+$$
+​	$A$在$B$方向上的投影$A'$则为B按照一个比例因子缩放，这个比例因子就是$\frac{|A|\cos\theta}{|B|}$：
+$$
+A'=\frac{|A|\cos\theta}{|B|}B=\frac{\langle A,B \rangle}{\langle B,B\rangle}B
+$$
+​	如果$B$是单位向量，则向量内积就是$A$在$B$上投影的坐标。因此，给定一组正交基向量$\set{\mathbf e_i}_{i=0}^{n}$，则基向量可以通过线性组合张成一个空间，这个空间中的任意向量$\mathbf x$都可以被表示成：
+$$
+\mathbf x=\sum_{i=0}^{n}\langle \mathbf x,\mathbf e_i\rangle \mathbf e_i
+$$
+​	拓展到更一般的情况，当$|\mathbf e_i|\ne 1$时，有：
+$$
+\mathbf x=\sum_{i=0}^{n}\frac{\langle \mathbf x,\mathbf e_i\rangle}{\langle \mathbf e_i,\mathbf e_i\rangle} \mathbf e_i
+$$
+​	函数也有基，可以是正交的或非正交的。如果我们定义了函数基的集合，空间中的任何函数都可以分解成若干基函数的组合。函数的内积也可以用来计算某个特定基上的系数。然而，由于函数的维度是连续的，因此可能有无穷多个基函数，对于一组基函数$\set{\phi_i}$,如果$\langle \phi_i,\phi_j\rangle=0$,$|\phi_i|=1$，任何由该基函数张成的空间中的函数都可以表示成：
+$$
+\begin{aligned}f&=\sum_{i=0}^{\infin} f_i\phi_i=\sum_{i=0}^{\infin}\langle f,\phi_i\rangle\phi_i \\
+&=\sum_{i=0}^{\infin}\int f(\mathbf x)\phi_i(\mathbf x)\operatorname{d}\mathbf x \text{ }\phi_i
+\end{aligned}
+$$
+​	同理，当$|\phi_i|\neq1$时：
+$$
+\begin{aligned}f&=\sum_{i=0}^{\infin} \frac{f_i\phi_i}{\langle\phi_i,\phi_i\rangle} =\sum_{i=0}^{\infin} \frac{\langle f,\phi_i\rangle\phi_i}{\langle\phi_i,\phi_i\rangle} \\
+&=\sum_{i=0}^{\infin}\frac{\int f(\mathbf x)\phi_i(\mathbf x)\operatorname{d}\mathbf x \text{ }}{\int \phi_i(\mathbf x)\phi_i(\mathbf x)\operatorname{d}\mathbf x }\phi_i
+\end{aligned}
+$$
+​	傅里叶级数（Fourier Series）是一个数学工具，用于将周期函数分解为一系列简单的正弦和余弦函数的和。其在信号分析、音频处理、图像处理等领域都有广泛应用。傅里叶级数的基本概念如下，假设有一个周期为$T$的函数$f(x)$，其可以被展开成无穷个三角函数的和的形式：
+$$
+f(x)=a_0+\sum_{i=0}^{\infin}(a_n\cos{\frac{2\pi nx}{T}}+b_n\sin{\frac{2\pi nx}{T}})
+$$
+​	其中：
+$$
+\begin{aligned}a_0&=\frac{2}{T} \int_{0}^{T} f(x)\operatorname{d}x \\
+a_n&=\frac{2}{T} \int_{0}^{T} f(x)\cos({\frac{2\pi nx}{T}})\operatorname{d}x \\
+b_n&=\frac{2}{T} \int_{0}^{T} f(x)\sin({\frac{2\pi nx}{T}})\operatorname{d}x
+\end{aligned}
+$$
+​	借助欧拉公式$e^{ix}=\cos x+i\sin x$，傅里叶级数也可以写成:
+$$
+\begin{aligned}f(x)&=\sum_{\neg \infin}^{\infin}c_ne^{i\frac{2\pi n}{T}x}\\
+c_n&=\frac{1}{T}\int_{0}^{T} f(x)e^{-i\frac{2\pi n}{T}x}\operatorname{d}x
+\end{aligned}
+$$
+​	我们可以将$\set{\phi_{n}(x)}=\set{e^{i2\pi nx}}_{n=\neg\infin}^{\infin}$视作基函数集合，可以简单证明，任意两个基函数是正交的：
+$$
+\begin{aligned}\langle \phi_j,\phi_k\rangle&=\int_{0}^{T}\phi_j (x) \bar{\phi_k}(x)\operatorname{d}x \\
+&=\int_{0}^{T}e^{\frac{i2\pi(j-k)}{T}}{\operatorname{d}x} \\
+&=\int_{0}^{T}\cos{\frac{2\pi(j-k)}{T}}{\operatorname{d}x} \\
+&=0\end{aligned}
+$$
+​	由$\phi_n$张成的函数空间中的函数$f$可以表示成$\phi_n$的线性组合：
+$$
+f(x)=\sum_{n}c_n\phi_n(x)=\sum_{n}c_ne^{i\frac{2\pi nx}{T}}
+$$
+​	则系数$c_n$可以表示为：
+$$
+\begin{aligned}c_n&=\frac{\langle f,\phi_n\rangle}{\langle \phi_n,\phi_n \rangle}=\frac{\int_{0}^{T} f(x)\bar{\phi_n(x)}\operatorname{d}x}{\int_{0}^{T}{\phi_n(x)} \bar{\phi_n(x)} \operatorname{d}x} \\
+&=\frac{\int_{0}^{T}f(x)e^{-i\frac{2\pi nx}{T}}\operatorname{d}x}{\int_{0}^{T}1\operatorname{d}x} \\
+&=\frac{1}{T}\int_{0}^{T}f(x)e^{-i\frac{2\pi nx}{T}}\operatorname{d}x\end{aligned}
+$$
 
 
 # 3.支持向量机
 
-
+xxxxxxx
 
 
 
@@ -201,7 +287,7 @@ $$
 
 # 4.高斯过程
 
-
+xxxxxxxx
 
 
 
@@ -219,7 +305,7 @@ $$
 
 [[6]A Story of Basis and Kernel - Part II: Reproducing Kernel Hilbert Space](http://songc\mathbf y.net/posts/stor\mathbf y-of-basis-and-kernel-part-2/)
 
-
+[[7]https://en.wikipedia.org/wiki/Fourier_series](https://en.wikipedia.org/wiki/Fourier_series)
 
 # 附录-证明
 
