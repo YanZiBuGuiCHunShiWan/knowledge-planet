@@ -26,7 +26,7 @@ $$
 &=\mathbb E_{\pi}\bigg[ R_t+\gamma G_{t+1}|S_t=s\bigg] \\
 &=\sum_{a}\pi(a|s)\sum_{r,s'} p(r,s'|s,a)(r+\gamma v_{\pi}(s'))\end{aligned}
 $$
-​	**动作价值函数** 则是根据策略$\pi$，从状态$s$开始，执行动作$a$之后所有可能的决策序列的期望回报，我们用符号$q_{\pi}(s,a)$表示：
+l	**动作价值函数** 则是根据策略$\pi$，从状态$s$开始，执行动作$a$之后所有可能的决策序列的期望回报，我们用符号$q_{\pi}(s,a)$表示：
 $$
 \begin{aligned}q_{\pi}(s,a)&\doteq  \mathbb E_{\pi}\bigg[ G_t|S_t=s,A_t=a\bigg]\\
 &=\sum_{r,s'}p(r,s'|s,a)(r+\gamma v_{\pi}(s'))
@@ -207,8 +207,6 @@ $$
 &{\operatorname {subject to}}{\text{ }} \mathbb E_{s\sim \rho_{old}}\bigg[ D_{KL}(\pi_{\theta_{old}}(\cdot|s)||\pi_{\theta}(\cdot|s))\bigg] \leq \delta
 \end{aligned}\tag{3.22}
 $$
-​	
-
 
 ## 3.2 PPO 
 
@@ -242,25 +240,23 @@ $$
 
 ### 3.2.1  DeepSpeed-Chat 源码解析
 
+![image-20250217111051594](E:\Study\gitpro\knowledge-planet\RL系列\assets\image-20250217111051594.png)	奖励模型和评判模型的均源自于$\mathrm{RewardModel}$这个类别，接下来分别详细解读$\mathrm{forward}$与$\mathrm{forward\_value}$​函数的实现细节。
 
+![image-20250217134640823](E:\Study\gitpro\knowledge-planet\RL系列\assets\image-20250217134640823.png) 	将采样阶段模型的输入与输出$token$拼接后输入奖励模型，由$\mathrm{self.v\_head}$将奖励模型每一个位置输出的$\mathrm{logits} \in \mathbf R^{|V|\times 1}$映射成一维标量$\mathrm {rewards_i}\in\mathbf R,i=1,....,|S|$。代码第$66$行的变量$\mathrm {rewards}$其实就是一个形状为$[2B，S]$的矩阵，前$B$个对应$\mathrm{chosen}$样本，后$B$个对应$\mathrm{rejected}$样本。接着通过$\text{for}$循环的方式遍历所有样本将损失函数逐个累加...........。
 
+​	在$\mathrm{training/step3\_rlhf\_finetuning/main.py}$下的$for$循环内有两个比较重要的函数，第一个是第$537$行的$\mathrm{generate\_experience}$，另一个是第$553$行的$\mathrm{train\_rlhf}$。分别用于生成轨迹以及计算损失函数。
 
+![image-20250217155740680](E:\Study\gitpro\knowledge-planet\RL系列\assets\image-20250217155740680.png)
 
-#### 3.2.1.1 采样
+​	先看第一个函数$\text{generate\_experience}，返回的字典中包括了$actor$和$reference$的对数几率，并且还有$actor$生成的序列的奖励以及每一个$token$对应的价值。价值计算由$$\text{critic\_model.forward\_value()}$产生，对应实现在dschat/utils/model/reward_model.py。
 
+![image-20250217135919357](assets\image-20250217135919357.png)
 
+​       在$\text{forward\_value}$函数中，目的是为了拿到模型输出的奖励，因此需要找到整个序列中只属于$answer$的这部分$token$，第$166$行得到的$c\_inds$是模型输出的回答部分结束的位置索引，第$168-169$行是拿到最后一个位置前的输出的$value$，并返回$value$序列以及最后一个位置获得的奖励。在拿到了生成的轨迹和奖励与价值后，继续往下看到$for$循环内的第$564$行代码，在$\text{train\_rlhf}$中完成了损失函数的计算。
 
-#### 3.2.1.2 奖励计算
+![image-20250217165451472](E:\Study\gitpro\knowledge-planet\RL系列\assets\image-20250217165451472.png)
 
-
-
-#### 3.3.1.3 强化学习
-
-
-
-
-
-
+​	右边子图是该方法的具体实现，其中又涉及到了四个重要的函数，第一个函数是计算$actor$在策略$\pi_{\theta}$下获得的奖励，第二个函数是计算策略$\pi_{\theta}$下的优势，第三个函数则是计算$PPO$损失，第四个函数则是计算$critic$损失，
 
 ### 3.3.2 
 
@@ -341,7 +337,7 @@ $$
 
 ​	当$\alpha=0$时，为$\log\sigma(x)\in(-\infin,0)$，而随着$a$的增大，函数右边有往下的趋势，函数左边有往上抬的趋势，当$\alpha=1$时，函数和$\log\sigma(x)$图像完全反了过来（关于$y$轴对称）。即在训练中，虽然我们希望$\begin{aligned}  \log \frac{\pi_{\theta}(y_w \mid x)}{\pi_{\mathrm{ref}}(y_w \mid x)}-\beta \log \frac{\pi_{\theta}(y_l \mid x)}{\pi_{\mathrm{ref}}(y_l \mid x)}\end{aligned}$大于$0$，但实际情况可能是小于$0$的，越远离$0$则损失函数越大，可能导致训练不稳定，因此可以通过平滑系数对原函数进行趋势的控制。
 
-​	如上便是Deepspeed-Chat框架的DPO实现代码，关键部分相较于PPO便于理解，实现起来也较为简单，同时训练成本也更低，当然
+​	如上便是Deepspeed-Chat框架的DPO实现代码，关键部分相较于$PPO$便于理解，实现起来也较为简单，当然，对奖励模型损失函数的选择，并不局限于$\log\mathrm {sigmoid}$函数，其是无界的，即便通过平滑项进行趋势控制也难以彻底解决遇到异常样本时梯度过大导致训练不稳定的问题，我们可以选择一个有界函数使得训练过程更稳定，如保真度损失，亦或者截断梯度。
 
 ## 3.4 GRPO
 
