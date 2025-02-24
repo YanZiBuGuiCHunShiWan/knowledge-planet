@@ -18,7 +18,7 @@ v_{\pi}(s) \doteq \mathbb E_{\pi}\bigg[ G_t|S_t=s\bigg]=\mathbb E_{\pi}\bigg[ \s
 $$
 ​	状态价值函数反映了从状态 $S_t=s$ 开始，按照策略 $\pi$​执行动作后，智能体预计将获得的总奖励的期望值。
 
-![image-20250210155625587](E:\Study\知识构建\RL系列\assets\image-20250210155625587.png)
+
 
 ​	而价值函数满足某种递归关系，对于任何策略$\pi$和状态$s$，$s$的价值与其后继状态的价值关系如下：
 $$
@@ -240,25 +240,85 @@ $$
 
 ### 3.2.1  DeepSpeed-Chat 源码解析
 
-![image-20250217111051594](E:\Study\gitpro\knowledge-planet\RL系列\assets\image-20250217111051594.png)	奖励模型和评判模型的均源自于$\mathrm{RewardModel}$这个类别，接下来分别详细解读$\mathrm{forward}$与$\mathrm{forward\_value}$​函数的实现细节。
+#### 3.2.1.1 模型初始化
 
-![image-20250217134640823](E:\Study\gitpro\knowledge-planet\RL系列\assets\image-20250217134640823.png) 	将采样阶段模型的输入与输出$token$拼接后输入奖励模型，由$\mathrm{self.v\_head}$将奖励模型每一个位置输出的$\mathrm{logits} \in \mathbf R^{|V|\times 1}$映射成一维标量$\mathrm {rewards_i}\in\mathbf R,i=1,....,|S|$。代码第$66$行的变量$\mathrm {rewards}$其实就是一个形状为$[2B，S]$的矩阵，前$B$个对应$\mathrm{chosen}$样本，后$B$个对应$\mathrm{rejected}$样本。接着通过$\text{for}$循环的方式遍历所有样本将损失函数逐个累加...........。
+
+
+#### 3.2.1.2 数据集加载
+
+
+
+#### 3.2.1.3 开始训练
 
 ​	在$\mathrm{training/step3\_rlhf\_finetuning/main.py}$下的$for$循环内有两个比较重要的函数，第一个是第$537$行的$\mathrm{generate\_experience}$，另一个是第$553$行的$\mathrm{train\_rlhf}$。分别用于生成轨迹以及计算损失函数。
 
 ![image-20250217155740680](E:\Study\gitpro\knowledge-planet\RL系列\assets\image-20250217155740680.png)
 
-​	先看第一个函数$\text{generate\_experience}，返回的字典中包括了$actor$和$reference$的对数几率，并且还有$actor$生成的序列的奖励以及每一个$token$对应的价值。价值计算由$$\text{critic\_model.forward\_value()}$产生，对应实现在dschat/utils/model/reward_model.py。
+​	先看第一个函数$\text{generate\_experience}$，返回的字典中包括了$actor$和$reference$的对数几率，并且还有$actor$生成的序列的奖励以及每一个$token$对应的价值。价值计算由$\text{critic\_model.forward\_value()}$产生，对应实现在dschat/utils/model/reward_model.py。函数中实现的功能如下图所示：
+
+![image-20250219104714800](E:\Study\gitpro\knowledge-planet\RL系列\assets\image-20250219104714800.png)
+
+​	该函数中又涉及到了三个重要的函数，由图中的橙色粗体表示，分别是$\text{\_generate\_sequence}$，作用是$actor$根据给定的$prompt$生成完整的序列，以及$\text{forward\_value}$，$\text{Reward}$和$\text{Critic}$分别生成奖励和$token$序列的价值，最后是根据给定的维度和索引收集指定的对数概率，由函数$\text{gather\_loh\_probs}$完成。
 
 ![image-20250217135919357](assets\image-20250217135919357.png)
 
-​       在$\text{forward\_value}$函数中，目的是为了拿到模型输出的奖励，因此需要找到整个序列中只属于$answer$的这部分$token$，第$166$行得到的$c\_inds$是模型输出的回答部分结束的位置索引，第$168-169$行是拿到最后一个位置前的输出的$value$，并返回$value$序列以及最后一个位置获得的奖励。在拿到了生成的轨迹和奖励与价值后，继续往下看到$for$循环内的第$564$行代码，在$\text{train\_rlhf}$中完成了损失函数的计算。
+​       在$\text{forward\_value}$函数中，目的是为了拿到模型输出的奖励，因此需要找到整个序列中只属于$answer$的这部分$token$，第$166$行得到的$c\_inds$是模型输出的回答部分结束的位置索引，第$168-169$行是拿到最后一个位置前的输出的$value$，并返回$value$序列以及最后一个位置获得的奖励$\text{chosen\_end\_scores}$。在拿到了生成的轨迹和奖励与价值后，继续往下看到$for$循环内的第$564$行代码，在$\text{train\_rlhf}$中完成了损失函数计算和反向传播，该函数输入变量是$\text{generate\_experience}$函数的返回结果，即。
 
 ![image-20250217165451472](E:\Study\gitpro\knowledge-planet\RL系列\assets\image-20250217165451472.png)
 
-​	右边子图是该方法的具体实现，其中又涉及到了四个重要的函数，第一个函数是计算$actor$在策略$\pi_{\theta}$下获得的奖励，第二个函数是计算策略$\pi_{\theta}$下的优势，第三个函数则是计算$PPO$损失，第四个函数则是计算$critic$损失，
+​	右边子图是该方法的具体实现，其中又涉及到了四个重要的函数，第一个函数是计算$actor$在策略$\pi_{\theta}$下获得的奖励，第二个函数是计算策略$\pi_{\theta}$下的优势，第三个函数则是计算$PPO$损失，第四个函数则是计算$critic$损失，四个函数均定义在$\text{DeepSpeedPPOTrainer}$的类下，整体关系如下图所示：
 
-### 3.3.2 
+![image-20250220114454497](E:\Study\gitpro\knowledge-planet\RL系列\assets\image-20250220114454497.png)
+
+​	接下来看到$\text{compute\_rewards}$和$\text{get\_advantages\_and\_returns}$两个函数，分别完成了奖励计算以及优势与回报计算。$rewards$其实计算一个$[Batch,Seq]$的二维张量，$Seq$这个维度每一个元素需要计算$actor$和$reference$输出的$KL$散度即$\mathbb E_{A_t\sim\pi_{\theta}}[\log \frac{\pi_{\theta}(A_t|S_t)}{\pi_{ref}(A_t|S_t)}]$，且最后一个位置还要加上$seq$序列最终的奖励分数。需要注意的是，在$\mathrm{ppo\_epoches}$这个循环中，一开始$\mathrm {actor\_log\_probs}$与$\mathrm {log\_probs}$二者是相同的，随着循环的进行，$actor$不断更新后二者不再相同。
+
+![image-20250219171740261](E:\Study\gitpro\knowledge-planet\RL系列\assets\image-20250219171740261.png)
+
+​	在计算完带有惩罚项的奖励以后，我们需要计算优势函数$A_t$。在广义优势估计中，有：
+$$
+\begin{aligned}A_t&=\sum_{k=0}^{\infin}(\gamma \lambda)^k\delta_{t+k}\\
+&=\delta_t+\underbrace {(\gamma \lambda)\sum_{k=0}^{\infin}(\gamma \lambda)^k\delta_{t+1+k}}_{\gamma\lambda A_{t+1}}\\
+&=\delta_t+\gamma\lambda\delta_{t+1}+\underbrace{(\gamma \lambda)^2\sum_{k=0}^{\infin}(\gamma \lambda)^k\delta_{t+2+k}}_{(\gamma\lambda)^2 A_{t+2}}\\
+&=\cdots{}\cdots{}\\
+\delta_t&=r_t+\gamma V(S_{t+1})-V(S_t)\end{aligned}
+$$
+​	由上面公式可知，计算$A_t$需要知道$\delta_t$和$A_{t+1}$，计算$\delta_t$需要知道$r_t,V(S_{t+1})$和$V(S_t)$，而$r_t,V(S_t)$可以由图中的$\text{rewards}$和$\text {old\_values}$直接得出，所以问题在于如何求$A_{t+1}$，此时如果正向计算$A_t,t=0,1...,T$就存在一个问题，计算$A_0$需要知道$A_1$,计算$A_1$需要知道$A_2$，以此类推需要先把$A_t$全部都先算出来才能知道最开始的$A_0$（增加内存占用，需保存所有中间结果），因此我们通常采用倒序计算的方式以更高效地解决这个问题，即我们先算$A_T$，并基于如下公式递推计算$A_{T-1}=\delta_{T-1}+\gamma\lambda A_T$，每一步复用上一步的结果，最终计算完$A_0$。计算完优势序列$A_t$后，根据$PPO$的公式，我们只需要再计算出新旧策略执行动作的比率$R_t=\frac{\pi_{\theta}(A_t|S_t)}{\pi_{\theta_{old}}(A_t|S_t)}$就能计算损失函数。而比率$R_t$就是更新后的$actor$输出的动作序列(对数概率)除以没更新前的$actor$的动作序列，整个流程示意图如下所示：
+
+![image-20250221170756640](E:\Study\gitpro\knowledge-planet\RL系列\assets\image-20250221170756640.png)
+
+​	计算$R_t$依赖于更新后的$actor$的动作概率和未更新的$actor$的动作概率，而$\text{actor\_log\_prob}$与$\text{log\_prob}$是对数概率，因此有$R_t=\exp \{ \log\pi_{\theta}(A_t|S_t)-\log_{\theta\pi_{old}}(A_t|S_t)\}$，再依据$PPO$损失函数公式得到最后的损失$\text{pg\_loss}$​。$actor$会不断改进策略以执行更好的动作，与此同时$critic$也需要不断更新，读者可以理解为一个教练不能总是以过往的眼光来评价一个不断进步的演员。$critic$的损失函数计算比较简单，采用的是平方差损失：
+
+![image-20250221175504910](E:\Study\gitpro\knowledge-planet\RL系列\assets\image-20250221175504910.png)
+
+​	首先通过$\mathrm{torch.clamp}$将$\mathrm{values}$​限制到一定范围，计算平方差损失后再取每一个位置上的最大值，如上便是整个RLHF-PPO算法的核心流程实现，值得注意的是，在$\mathrm{ppo\_epochs}$的循环中，$actor$与$critic$更新以后在$558$行还有一个无监督训练：
+
+![image-20250221180936573](E:\Study\gitpro\knowledge-planet\RL系列\assets\image-20250221180936573.png)
+
+​	进入$\text{train\_unsupervised}$方法后可以发现其就是默认的损失，即next prediction loss，（数据集不是SFT形式的数据，是预训练形式的数据）目的是为了在强化学习过程中保持模型的通用领域知识，防止模型被带偏。
+
+
+
+
+
+
+
+
+
+
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+
+
+
+
+
+
+
+
+### 3.3.2 小节
+
+
 
 
 
@@ -313,21 +373,19 @@ $$
 
 ​	这里笔者着重讲解框架中的损失函数计算部分，分为如下三部分
 
-#### 3.3.1.1  构建label mask
-
-​	![image-20250214172456512](E:\Study\gitpro\knowledge-planet\RL系列\assets\image-20250214172456512.png)
+#### 3.3.1.1  构建label mask	![image-20250214172456512](E:\Study\gitpro\knowledge-planet\RL系列\assets\image-20250214172456512.png)
 
 ​	如果开发者将batchsize设置成$B$，由于每一个$prompt$对应了一好一坏的回答，则一共会有$2B$个样本在一次迭代$step$中，前$B$个样本是好的回答，后$B$个样本是被拒绝的回答。而$label\_mask$则用于选择对应$token$位置的奖励，即$label\_mask=1$的位置会被考虑，其他为$0$的位置不会被纳入计算，由于奖励只是针对模型生成内容的部分，且对于模型的$prefilling$而言，前$k$个$token$一致时每个位置输出的$\mathrm {logits}$都一致，所以要找到$chosen$与$reject$的第一个顺序遇到不同的$token$的位置索引，将$label\_mask$该索引前元素都置为$0$，实现对应于代码第$465$-$473$行。第$463$行先是把不为$<pad>$的部分置$1$，再接着把$prompt$和$answer$中前$k$个相同$token$对应位置的$label\_mask$置$0$。
 
 #### 3.3.1.2 计算对数概率
 
-​	详见代码第$474-485$行与函数$\mathrm {def\_batch\_logps}$。![image-20250214174114978](E:\Study\gitpro\knowledge-planet\RL系列\assets\image-20250214174114978.png)
+​	详见代码第$474-485$行与函数$\mathrm {def\_batch\_logps}$。![image-20250214174114978](assets\image-20250214174114978.png)
 
 ​	我们需要先将$label$与$label\_mask$对应位置元素相乘，只剩下需要考虑的位置的$token$，因此将$\mathrm{logits}$序列对应$token$位置的$\mathrm {logit} \in \mathbf R^{|V|\times 1}$向量中该$token$的索引的分量，即$\pi_{\theta}(y_j\mid x),j=1,...,|y|$取出，通过$\mathrm {torch.gather}$函数实现，最终再相加作为整句话的奖励，笔者该处的符号表述多了一个下角标$j$，和$DPO$论文中的符号不一致，原因是Deepspeed-chat框架中奖励模型不是最朴素的奖励模型，而是$\text{Outcome Reward}$模型，即考虑$token$位置的奖励而非只考虑整句话最后一个位置的奖励。
 
 #### 3.3.1.3 计算损失函数
 
-![image-20250214180146011](E:\Study\gitpro\knowledge-planet\RL系列\assets\image-20250214180146011.png)
+![image-20250214180146011](assets\image-20250214180146011.png)
 
 ​	$actor$与$reference$的对数概率变量$\mathrm {logps}$和$\mathrm {ref\_logps}$都计算完成后就可以根据公式$3.3.8$带入进行损失函数计算，$\sigma$函数内的变量对应图中代码的第$487-489$行。此外，框架中还对损失函数进行了平滑操作：
 $$
@@ -351,11 +409,7 @@ $$
 
 
 
-
-
-
-
-
+\
 
 
 
