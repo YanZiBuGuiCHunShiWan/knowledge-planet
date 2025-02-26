@@ -2,14 +2,6 @@
 
 # 1.BERT
 
-## 1.1 Bert for CLS
-
-## 1.2 BERT for NLU
-
-## 1.3 BERT for Embedding
-
-## 1.4 BERT for Ranking
-
 # 2.perceiver
 
 
@@ -40,19 +32,7 @@
 
 ​		$\text{step4.}$同样,对于$\text{Decoder}$而言,其输出在交叉注意力机制的影响下会和一致(具体流程和$\text{Encoder}$中一样,故次省略).所以,如果是用于$\text{Classification}$任务,那么$\text{Output Lantent array}$的形状就应该是:$[\text{Batch},1,\text{hidden dim}]$.这样$\text{Decoder}$的输出就会变成$[\text{Batch},1,\text{hidden dim}]$,squeeze掉第1维以后再接上用于分类的线性得到最终的输出形状就是$[\text{Batch},\text{num classes}]$​。
 
-
-
-
-
-# 4.Heirachical Perceiver
-
-
-
-
-
-
-
-# 5.Mental Perceiver
+# 4.Mental Perceiver
 
 
 
