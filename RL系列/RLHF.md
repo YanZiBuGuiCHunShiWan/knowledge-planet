@@ -2,7 +2,7 @@
 
 # 前言
 
-
+​	
 
 # 1.强化学习基础
 
@@ -77,7 +77,7 @@ $$
 
 ​	**1.轨迹的概率**，给定策略$\pi_{\theta}$下轨迹$\tau=(s_0,s_1,...,s_{T+1})$出现的概率如下：
 $$
-P(\tau|{\theta})=\rho(s_0)\prod_{t=0}^{T}P(s_{t+1}|s_t,a_t)\pi_{\theta}(a_t|s_t) \tag{2.3}
+P(\tau|{\theta})=\rho(S_0)\prod_{t=0}^{T}P(S_{t+1}|S_t,A_t)\pi_{\theta}(A_t|S_t) \tag{2.3}
 $$
 ​	**2.Log-Derivative Trick**，利用$\log$求导的技巧$\part_x \log(f(x))=\frac{\partial_x f(x)}{f(x)}$，对轨迹概率关于$\theta$求导，我们有：
 $$
@@ -85,30 +85,30 @@ $$
 $$
 ​	**3.轨迹的对数概率**，$P(\tau|\theta)$​的对数概率如下：
 $$
-\log P(\tau|\theta)=\underbrace{\log(\rho(s_0))}_{与\theta 无关}+\sum_{t=0}^{T}\underbrace{\log {P(s_{t+1}|s_t,a_t)}}_{与\theta 无关}+\log(\pi_{\theta}(a_t|s_t)) \tag{2.5}
+\log P(\tau|\theta)=\underbrace{\log(\rho(S_0))}_{与\theta 无关}+\sum_{t=0}^{T}\underbrace{\log {P(S_{t+1}|S_,A_t)}}_{与\theta 无关}+\log(\pi_{\theta}(A_t|S_t)) \tag{2.5}
 $$
 ​	**4.轨迹对数概率的梯度**，由于部分项与$\theta$无关，所以$\nabla_{\theta}\log P(\pi|\theta)$表达如下：
 $$
-\begin{aligned}\nabla_{\theta}\log P(\tau|\theta)&=\nabla_{\theta}\sum_{t=0}^{T}\log (\pi_{\theta}(a_t|s_t)) \\&=\sum_{t=0}^{T}\nabla_{\theta}\log (\pi_{\theta}(a_t|s_t))\end{aligned} \tag{2.6}
+\begin{aligned}\nabla_{\theta}\log P(\tau|\theta)&=\nabla_{\theta}\sum_{t=0}^{T}\log (\pi_{\theta}(A_t|S_t)) \\&=\sum_{t=0}^{T}\nabla_{\theta}\log (\pi_{\theta}(A_t|S_t))\end{aligned} \tag{2.6}
 $$
 ​	将上述式子结合，求出$\nabla_{\theta}J(\pi_{\theta})$​则有：
 $$
 \begin{aligned} \nabla_{\theta}J(\pi_{\theta})&=\nabla_{\theta}\sum_{\tau \sim (\pi_{\theta},E)}P(\tau|\theta)G(\tau) \\
 &=\sum_{\tau \sim (\pi_{\theta},E)}\nabla_{\theta}P(\tau|\theta)G(\tau) \\
 &=\sum_{\tau \sim (\pi_{\theta},E)}\nabla_{\theta}\log P(\tau|\theta) P(\tau|\theta)R(\tau) \\
-&=\sum_{\tau \sim (\pi_{\theta},E)}\sum_{t=0}^{T}\nabla_{\theta}\log (\pi_{\theta}(a_t|s_t)) P(\tau|\theta)G(\tau) \\
-&=\mathbb E_{\tau \sim (\pi_{\theta},E)} [\sum_{t=0}^{T}\nabla_{\theta}\log (\pi_{\theta}(a_t|s_t))G(\tau)] \end{aligned} \tag{2.7}
+&=\sum_{\tau \sim (\pi_{\theta},E)}\sum_{t=0}^{T}\nabla_{\theta}\log (\pi_{\theta}(A_t|S_t)) P(\tau|\theta)G(\tau) \\
+&=\mathbb E_{\tau \sim (\pi_{\theta},E)} [\sum_{t=0}^{T}\nabla_{\theta}\log (\pi_{\theta}(A_t|S_t))G(\tau)] \end{aligned} \tag{2.7}
 $$
 ​	也就是说，我们可以根据采样到的轨迹来计算策略梯度，即如果收集到了一系列由$\pi_{\theta}$产生的轨迹$D=\set{\tau_i}_{i=1}^{N}$，我们可以利用如下公式估计策略梯度：
 $$
-\hat {\nabla_{\theta}}J(\pi_{\theta})=\frac{1}{|D|}\sum_{i=1}^{N}\sum_{t=0}^{T}\nabla_{\theta}\log (\pi_{\theta}(a_t|s_t))G(\tau) \tag{2.8}
+\hat {\nabla_{\theta}}J(\pi_{\theta})=\frac{1}{|D|}\sum_{i=1}^{N}\sum_{t=0}^{T}\nabla_{\theta}\log (\pi_{\theta}(A_t|S_t))G(\tau) \tag{2.8}
 $$
 ​	如上便是策略梯度最简单的形式。如果我们能够在环境中运行策略来收集轨迹数据集，我们可以计算策略梯度并采取更新步骤。
 
 ​	**Don't Let the Past Distract You**.策略梯度的公式告诉我们对于一个轨迹$\tau=(s_0,s_1,...,s_T)$，每一个时刻的动作执行后对应的策略梯度都会乘以一个因子，即回报$R(\tau)$，但这并没有什么意义，因为是否强化智能体当前的决策动作只因和当前动作执行后产生的影响有关，如果当前动作执行后的收益低则不应当强化当前动作，反之亦然，而不能受先前因素的影响。因此，对于回报$R(\tau)$我们可以做出适当改进，不再考虑当前时刻$t'$之前的收益，则策略梯度可以重写为：
 $$
 \begin{aligned} \nabla_{\theta}J(\pi_{\theta})
-&=\mathbb E_{\tau \sim (\pi_{\theta},E)} [\sum_{t=0}^{T}(\nabla_{\theta}\log (\pi_{\theta}(a_t|s_t) \sum_{t=t'}^{T}R(s_{t'},a_{t'},s_{t'+1}))] \end{aligned} \tag{3.10}
+&=\mathbb E_{\tau \sim (\pi_{\theta},E)} [\sum_{t=0}^{T}(\nabla_{\theta}\log (\pi_{\theta}(A_t|S_t) \sum_{t=t'}^{T}R(S_{t'},A_{t'},S_{t'+1}))] \end{aligned} \tag{3.10}
 $$
 ​	在这个形式下，动作只基于在采取行动后获得的奖励而得到强化。我们将这种形式称为 **“Reward-to-go”**，因为回报为在轨迹的一个点之后奖励的总和。
 
@@ -116,29 +116,29 @@ $$
 
 ​	**Baseline in Policy Gradients.** 使用策略梯度面临着一个问题——准确地估算出梯度需要大量的样本轨迹，使用 EGLP 引理，我们可以证明**Reward -to-go**——尽管没有改变政策梯度的期望值——减少了我们估计的方差，因此减少了估计策略梯度所需的轨迹总数。而EGLP的直接结果是对于任何直接依赖于状态的函数$b$，我们有：
 $$
-\begin{aligned} \mathbb E_{a_t \sim \pi_{\theta}} [\nabla_{\theta}\log(\pi_{\theta}(a_t|s_t)b(s_t)]=0\end{aligned} \tag{3.11}
+\begin{aligned} \mathbb E_{A_t \sim \pi_{\theta}} [\nabla_{\theta}\log(\pi_{\theta}(A_t|S_t)b(s_t)]=0\end{aligned} \tag{3.11}
 $$
 ​	这使得我们可以在不改变期望值的情况下在策略梯度表达式上加上或减去任意项：
 $$
 \begin{aligned} \nabla_{\theta}J(\pi_{\theta})
-&=\mathbb E_{\tau \sim (\pi_{\theta},E)} [\sum_{t=0}^{T}\bigg(\nabla_{\theta}\log (\pi_{\theta}(a_t|s_t) \big(\sum_{t=t'}^{T}R(s_{t'},a_{t'},s_{t'+1})-\underbrace{b(s_t)}_{\text{Baseline}}\big)\bigg)] \end{aligned}
+&=\mathbb E_{\tau \sim (\pi_{\theta},E)} [\sum_{t=0}^{T}\bigg(\nabla_{\theta}\log (\pi_{\theta}(A_t|S_t) \big(\sum_{t=t'}^{T}R(S_{t'},A_{t'},S_{t'+1})-\underbrace{b(s_t)}_{\text{Baseline}}\big)\bigg)] \end{aligned}
 \tag{3.12}
 $$
-​	在这个表达式中，任何函数$b$都称作$\text{baseline}$。最常见的基线选择是状态价值函数$V^{\pi}(s_t)$。回想一下，这是一个智能体从状态开始，然后在其剩余生命周期内按照策略行事时获得的平均回报。从**经验上**讲，这种选择具有减少策略梯度样本估计方差的效果，使得策略梯度学习更快更稳定。从直观上将，假设在某个状态$s_t$下，智能体采取了一个动作 $a_t$，并得到了一个回报。如果这个回报远高于该状态的预期回报（即 $V^{\pi}(s_t)$），我们认为这个动作“更好”；如果低于预期回报，我们认为该动作“不好”，通过减去$V^{\pi}(s_t)$​，我们将焦点集中在“超出预期的部分”（即优势）上。这就像在与基准相比时，我们只关注某个动作相对于平均策略的改进或削弱。
+​	在这个表达式中，任何函数$b$都称作$\text{baseline}$。最常见的基线选择是状态价值函数$V^{\pi}(s_t)$。回想一下，这是一个智能体从状态开始，然后在其剩余生命周期内按照策略行事时获得的平均回报。从**经验上**讲，这种选择具有减少策略梯度样本估计方差的效果，使得策略梯度学习更快更稳定。从直观上将，假设在某个状态$S_t$下，智能体采取了一个动作 $A_t$，并得到了一个回报。如果这个回报远高于该状态的预期回报（即 $V^{\pi}(s_t)$），我们认为这个动作“更好”；如果低于预期回报，我们认为该动作“不好”，通过减去$V^{\pi}(s_t)$​，我们将焦点集中在“超出预期的部分”（即优势）上。这就像在与基准相比时，我们只关注某个动作相对于平均策略的改进或削弱。
 
 > [!NOTE]
 >
 > 值得注意的是，$V^{\pi}(s_t)$并不能准确的计算，所以需要近似计算，通常我们用一个神经网络$V_{\phi}^{\pi}(s_t)$估计价值函数，它与策略网络同时更新，而$V_{\phi}^{\theta}$的优化目标通常是最小均方误差（包括$VPG,TRPO,PPO$等），即：
 > $$
-> \phi_k= \arg\min_{\phi} \mathbb E_{s_t,\hat{R_t}\sim \pi_k}\big[ \big( V_{\phi}(s_t)-\hat{R_t}\big)^2 \big] \tag{3.13}
+> \phi_k= \arg\min_{\phi} \mathbb E_{S_t,\hat{R_t}\sim \pi_k}\big[ \big( V_{\phi}(S_t)-\hat{R_t}\big)^2 \big] \tag{3.13}
 > $$
 
 ​	我们可以以一种更一般地形式写出策略梯度：
 $$
 \begin{aligned} \nabla_{\theta}J(\pi_{\theta})
-&=\mathbb E_{\tau \sim (\pi_{\theta},E)} \bigg[ \sum_{t=0}^{T}\bigg(\nabla_{\theta}\log (\pi_{\theta}(a_t|s_t) \Psi(t)\bigg) \bigg] \end{aligned} \tag{3.14}
+&=\mathbb E_{\tau \sim (\pi_{\theta},E)} \bigg[ \sum_{t=0}^{T}\bigg(\nabla_{\theta}\log (\pi_{\theta}(A_t|S_t) \Psi(t)\bigg) \bigg] \end{aligned} \tag{3.14}
 $$
-​	$\Psi(t)=R(\tau)$时$\nabla_{\theta}J(\pi_{\theta})$是基础，$\Psi(t)=\sum_{t=t'}^{T}R(s_{t'},a_{t'},s_{t'+1})$时是**Reward-to-go**，$\Psi(t)=\sum_{t=t'}^{T}R(s_{t'},a_{t'},s_{t'+1})-b(s_t)$是**Reward-to-go with baseline**。此外，$\Psi(t)$的选择还可以是动作价值函数$Q^{\pi}(s_t,a_t)$，优势函数$A^{\pi}(s_t,a_t)=Q^{\pi}(s_t,a_t)-V^{\pi}(s_t)$，利用优势函数的策略梯度的公式化极为常见，并且不同算法使用的优势函数有许多不同的估计方法。
+​	$\Psi(t)=R(\tau)$时$\nabla_{\theta}J(\pi_{\theta})$是基础，$\Psi(t)=\sum_{t=t'}^{T}R(S_{t'},A_{t'},S_{t'+1})$时是**Reward-to-go**，$\Psi(t)=\sum_{t=t'}^{T}R(S_{t'},A_{t'},S_{t'+1})-b(S_t)$是**Reward-to-go with baseline**。此外，$\Psi(t)$的选择还可以是动作价值函数$Q^{\pi}(S_t,A_t)$，优势函数$A^{\pi}(s_t,a_t)=Q^{\pi}(S_t,A_t)-V^{\pi}(S_t)$，利用优势函数的策略梯度的公式化极为常见，并且不同算法使用的优势函数有许多不同的估计方法。
 
 ## 3.1TRPO
 
@@ -146,21 +146,35 @@ $$
 
 ​	一个策略$\tilde \pi$关于另一个策略$\pi$的预期收益在累计时间步上的优势为：
 $$
-J(\tilde \pi)-J(\pi)=\mathbb E_{\tau\sim \tilde \pi}\bigg[ \sum_{t=0}^{\infin}\gamma^tA_{\pi}(s_t,a_t)\bigg]\tag{3.15}
+J(\tilde \pi)-J(\pi)=\mathbb E_{\tau\sim \tilde \pi}\bigg[ \sum_{t=0}^{\infin}\gamma^tA_{\pi}(S_t,A_t)\bigg]\tag{3.15}
 $$
-​	证明如下：
+​	在$TRPO$的原论文中，提供了该公式的反向证明如下（笔者略微进行了调整）：
 $$
-\begin{aligned} \mathbb E_{\tau \sim \tilde \pi}&\bigg[ \sum_{t=0}^{\infin}\gamma^tA_{\pi}(s_t,a_t)\bigg] \\
-&=\mathbb E_{\tau \sim \tilde \pi}\bigg[ \sum_{t=0}^{\infin}\gamma^t(q_{\pi}(s_t,a_t)-v_{\pi}(s_t))\bigg] \\
-&=\mathbb E_{\tau \sim \tilde \pi}\bigg[ \sum_{t=0}^{\infin}\gamma^t(R(s_t,a_t,s_{t+1})+\gamma v_{\pi}(s_{t+1})-v_{\pi}(s_t))\bigg]\\
-&=\mathbb E_{\tau \sim \tilde \pi}\bigg[ \sum_{t=0}^{\infin}\gamma^tR(s_t,a_t,s_{t+1})+\gamma^{t+1}v_{\pi}(s_{t+1})-\gamma^t v_{\pi}(s_t)\bigg]\\
-&=\mathbb E_{\tau \sim \tilde \pi}\bigg[ \sum_{t=0}^{\infin}\gamma^tR(s_t,a_t,s_{t+1})\bigg]+\mathbb E_{\tau \sim \tilde \pi}\bigg[\sum_{t=0}^{\infin}\gamma^{t+1}v_{\pi}(s_{t+1})-\gamma^t v_{\pi}(s_t)\bigg]\\
-&=J(\tilde \pi)+\mathbb E_{\tau \sim \tilde \pi}\bigg[\sum_{t=1}^{\infin}\gamma^{t}v_{\pi}(s_{t})-\sum_{t=0}^{\infin}\gamma^t v_{\pi}(s_t)\bigg]\\
-&=J(\tilde \pi)-\mathbb E_{\tau \sim \tilde \pi}\bigg[v_{\pi}(s_0)\bigg]\\
+\begin{aligned} \mathbb E_{\tau \sim \tilde \pi}&\bigg[ \sum_{t=0}^{\infin}\gamma^tA_{\pi}(S_t,A_t)\bigg] \\
+&=\mathbb E_{\tau \sim \tilde \pi}\bigg[ \sum_{t=0}^{\infin}\gamma^t(q_{\pi}(S_t,A_t)-v_{\pi}(S_t))\bigg] \\
+&=\mathbb E_{\tau \sim \tilde \pi}\bigg[ \sum_{t=0}^{\infin}\gamma^t(R(S_t,A_t,S_{t+1})+\gamma v_{\pi}(S_{t+1})-v_{\pi}(S_t))\bigg]\\
+&=\mathbb E_{\tau \sim \tilde \pi}\bigg[ \sum_{t=0}^{\infin}\gamma^tR(S_t,A_t,S_{t+1})+\gamma^{t+1}v_{\pi}(S_{t+1})-\gamma^t v_{\pi}(S_t)\bigg]\\
+&=\mathbb E_{\tau \sim \tilde \pi}\bigg[ \sum_{t=0}^{\infin}\gamma^tR(S_t,A_t,S_{t+1})\bigg]+\mathbb E_{\tau \sim \tilde \pi}\bigg[\sum_{t=0}^{\infin}\gamma^{t+1}v_{\pi}(S_{t+1})-\gamma^t v_{\pi}(S_t)\bigg]\\
+&=J(\tilde \pi)+\mathbb E_{\tau \sim \tilde \pi}\bigg[\sum_{t=1}^{\infin}\gamma^{t}v_{\pi}(S_{t})-\sum_{t=0}^{\infin}\gamma^t v_{\pi}(S_t)\bigg]\\
+&=J(\tilde \pi)-\mathbb E_{\tau \sim \tilde \pi}\bigg[v_{\pi}(S_0)\bigg]\\
 &=J(\tilde \pi)-J(\pi)\end{aligned}\tag{3.16}
 $$
 
-​	如果能保证$J(\tilde \pi)-J(\pi)$大于$0$，则能说明更新后的策略一直在进步，而优势函数这一项又可以改写成：
+​	记住这个结论显得略微生硬，指导如何推导不代表对该问题有深入的理解，先抛开繁琐的证明，我们先理解什么是一个策略$\tilde \pi$关于另一个策略$\pi$在累计时间步上的收益，以及是否有无特殊条件：
+
+
+
+
+
+
+
+
+
+
+
+
+
+如果能保证$J(\tilde \pi)-J(\pi)$大于$0$，则能说明更新后的策略一直在进步，而优势函数这一项又可以改写成：
 $$
 \begin{aligned}\mathbb E_{\tau \sim \tilde \pi}&\bigg[ \sum_{t=0}^{\infin}\gamma^tA_{\pi}(s_t,a_t)\bigg] \\
 &=\sum_{t=0}^{\infin}\sum_{s}p(s_t=s|\tilde \pi)\sum_a \tilde \pi(a_t=a|s)\gamma^tA_{\pi}(s,a)\\
@@ -395,6 +409,10 @@ $$
 
 
 
+
+
+
+
 ## 3.5 GRPO
 
 
@@ -418,5 +436,9 @@ $$
 [[X](WIP) A Little Bit of Reinforcement Learning from Human Feedback](https://rlhfbook.com/book.pdf)
 
 [[x]Policy Gradient Algorithms,Weng, Lilian,liliangweng.github.io,2018](https://lilianweng.github.io/posts/2018-04-08-policy-gradient/)
+
+[[x]Trust Region Policy Optimization](https://arxiv.org/abs/1502.05477)
+
+[[x]Approximately Optimal Approximate Reinforcement Learning](https://people.eecs.berkeley.edu/~pabbeel/cs287-fa09/readings/KakadeLangford-icml2002.pdf)
 
 [[x]深度强化学习（三）：TRPO（Trust Region Policy Optimization ，信赖域策略优化）,Dreammaker](https://zhuanlan.zhihu.com/p/605886935)
