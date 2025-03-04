@@ -1,6 +1,6 @@
 # 核方法
 
-# 相关概念
+# 1.相关概念
 
 现代数学的一个特点就是以集合为研究对象，这样的好处就是可以将很多不同问题的本质抽象出来，变成同一个问题，当然这样的坏处就是描述起来比较抽象，很多人就难以理解了。
 
@@ -133,8 +133,10 @@ $$
 $$
 ​	这里重申一下为什么要再次定义内积，以及为什么这么定义。首先：之前的点积定义（例如在Hilbert空间中）是一般的，但在RKHS中，点积需要与核函数$K$的特定属性一致。因此，需要重新定义点积以满足这些要求。再生核希尔伯特空间的核心在于满足以下两个关键性质：
 
-1. 再生性：对任意函数$f \in \mathcal H$和任意$\mathbf x \in \mathcal X$，有$f(x)=\langle f,k_{\mathbf x}\rangle_{\mathcal H}$。
-2. 核的内积性质：核函数本身的值通过点积表达：$K(\mathbf x,\mathbf x')=\langle k_\mathbf x,k_{\mathbf x'}\rangle_{\mathcal H}$。
+> [!IMPORTANT]
+>
+> 1. 再生性：对任意函数$f \in \mathcal H$和任意$\mathbf x \in \mathcal X$，有$f(x)=\langle f,k_{\mathbf x}\rangle_{\mathcal H}$。
+> 2. 核的内积性质：核函数本身的值通过点积表达：$K(\mathbf x,\mathbf x')=\langle k_\mathbf x,k_{\mathbf x'}\rangle_{\mathcal H}$。
 
 ​	而现在我们需要验证一下公式$2.12$的定义是否能满足如上两个关键点，即内积的定义能使得运算满足公式$2.10$，证明如下：将$k_{\mathbf x}$与$k_{\mathbf {x'}}$展开到特征基$\set{\phi_i}_{i=0}^{\infin}$上：
 $$
@@ -202,15 +204,15 @@ $$
 >
 > **1.希尔伯特空间和再生核希尔伯特空间的不同？**
 >
-> ​	再生核希尔伯特空间是希尔伯特空间的基础上引入一个核函数。这个核函数$K(\mathbf x,\mathbf y)$是正定与对称的，使得函数$f(x)$的值可以由$f$与希尔伯特空间中的核向量的内积再生出来，即$f(x)=\langle f,K(\mathbf x,\cdot)\rangle_{\mathcal H}$。也就是说普通的希尔伯特空间只给了一些向量，并没有特殊的工具帮助你计算函数在某一点的值。
+> ​	再生核希尔伯特空间是希尔伯特空间的基础上引入一个核函数。这个核函数$K(\mathbf x,\mathbf y)$是正定与对称的，使得函数$f(x)$的值可以由$f$与希尔伯特空间中的核向量的内积再生出来，即$f(x)=\langle f,K(\mathbf x,\cdot)\rangle_{\mathcal H}$​。也就是说普通的希尔伯特空间只给了一些向量，并没有特殊的工具帮助你计算函数在某一点的值。
+>
+> 
 
-## 2.3 傅里叶变换
+#3 函数分解
 
-​	傅里叶变换是xxxxxxxxxxx，最开始由xxx在xxxx发现。三角级数的关心xxxxxx。在本文中，并不深入讲解傅里叶变换的应用及相关延申，而是从泛函分析的视角看待傅里叶级数与傅里叶变换。
+## 3.1 向量与函数
 
-### 2.3.1  基
-
-​	对于两个向量$A$与$B$而言，向量内积可以反应两个向量的相似度，同时也代表 $A$在$B$方向上的投影长度与$B$的长度的乘积：
+对于两个向量$A$与$B$而言，向量内积可以反应两个向量的相似度，同时也代表 $A$在$B$方向上的投影长度与$B$的长度的乘积：
 $$
 \langle A,B\rangle=|A||B|\cos\theta
 $$
@@ -242,6 +244,23 @@ $$
 &=\sum_{i=0}^{\infin}\frac{\int f(\mathbf x)\phi_i(\mathbf x)\operatorname{d}\mathbf x \text{ }}{\int \phi_i(\mathbf x)\phi_i(\mathbf x)\operatorname{d}\mathbf x }\phi_i
 \end{aligned}
 $$
+
+ ## 3.2 Bessel’s Inequality
+
+
+
+## 3.3  Parseval’s Theorem 
+
+
+
+## 3.4 Pointwise Representation
+
+## 3.5 Hilbert–Schmidt Theorem
+
+
+
+## 3.6 傅里叶变换
+
 ​	傅里叶级数（Fourier Series）是一个数学工具，用于将周期函数分解为一系列简单的正弦和余弦函数的和。其在信号分析、音频处理、图像处理等领域都有广泛应用。傅里叶级数的基本概念如下，假设有一个周期为$T$的函数$f(x)$，其可以被展开成无穷个三角函数的和的形式：
 $$
 f(x)=a_0+\sum_{i=0}^{\infin}(a_n\cos{\frac{2\pi nx}{T}}+b_n\sin{\frac{2\pi nx}{T}})
@@ -278,7 +297,7 @@ $$
 $$
 
 
-# 3.支持向量机
+# 4.支持向量机
 
 xxxxxxx
 
@@ -287,7 +306,7 @@ xxxxxxx
 
 
 
-# 4.高斯过程
+# 5.高斯过程
 
 xxxxxxxx
 
