@@ -168,7 +168,7 @@ $$
 
 ​	通过Top1概率，给定一个真实标签的概率分布$\mathbf P_{\mathbf y}^{(i)}$和模型输出的概率分布$\mathbf P_{\mathbf z}^{(i)}$，我们就可以用一个度量分布的指标作为损失函数，这里笔者沿用论文中的符号，查询$q^{(i)}$对应的候选文档集合为$\mathbf d^{(i)}=\set{d^{(i)}_{1},...,d_{n^{(i)}}^{(i)}}$，查询$q^{(i)}$对应文档集合的人工标记相关性分数向量记作$\mathbf y^{(i)}=(y^{(i)}_{1},...,y^{(i)}_{n^{(i)}})$，模型预测的输出为$\mathbf z^{(i)}=(z^{(i)}_{1},...,z^{(i)}_{n^{(i)}})$，我们看一下不同标注方式下的ListNet模型的损失函数：
 
-![image-20250327155924152](E:\Study\gitpro\knowledge-planet\NLP系列\assets\image-20250327155924152.png)
+![image-20250327155924152](assets\image-20250327155924152.png)
 
 ​	**方式一**即上图的左半部分，假设在标注阶段的每一个文档的相关性分数都是确切的，专家关注每一篇文档的得分，查询$q^{(i)}$标签的概率分布记作$\mathbf P_{\mathbf y}^{(i)}=(P_{y^{(i)}}(1),...,P_{y^{(i)}}(n))^{\top}$，模型输出的概率分布记作$\mathbf P_{\mathbf z}^{(i)}=(P_{z^{(i)}}(1),...,P_{z^{(i)}}(n))^{\top}$，前者是目标分布，后者是真实分布，我们可以找一个度量分布的函数作为损失函数，KL散度。若采用KL散度作为损失，则$\operatorname{D}_{KL}(\mathbf P_{\mathbf y}^{(i)}||\mathbf P_{\mathbf z}^{(i)})$表达如下：
 $$
@@ -185,23 +185,9 @@ $$
 -\log P(\hat {\mathbf s})=-\log \frac{\exp (4)}{\exp (4)+\exp (2)+\exp (3)+\exp (1)}\frac{\exp (3)}{\exp (3)+\exp (2)+\exp (1)}\frac{\exp (2)}{\exp (2)+\exp (1)}
 $$
 ​	然而，ListNet与ListMLE这类排序模型的优化目标与位置无关，用IR的衡量指标如$NDCG$来衡量排序好坏时有不一致的矛盾，如下案例[[x]](https://auai.org/uai2014/proceedings/individuals/164.pdf)能给出一个直观解释，假设真实的最优排序是$\mathbf y=(1,2,3,4,5)$，给定一个分数列表$\mathbf s_1=(\ln4,\ln5,\ln3,\ln2,\ln1)$和$\mathbf s_2=(\ln5,\ln4,\ln1,\ln2,\ln3)$，依据ListMLE的损失函数，则有：
-$$
-\begin{aligned}
-L(f_1,\mathbf x,\mathbf y)&=-\log(\frac{4}{4+5+3+2+1}\cdot\frac{5}{5+3+2+1}\cdot\frac{3}{3+2+1}\cdot\frac{2}{2+1})\\&=1.213\\
-L(f_2,\mathbf x,\mathbf y)&=-\log(\frac{5}{5+4+3+2+1}\cdot\frac{4}{4+3+2+1}\cdot\frac{1}{1+2+3}\cdot\frac{2}{2+3})\\&=1.213
-\end{aligned}
-$$
-​	从NDCG指标来衡量则发现结果相反，即$NDCG@5(f_1,\mathbf x,\mathbf y)\lt NDCG@5(f_1,\mathbf x,\mathbf y)$:
-$$
-\begin{aligned}
- N D C G @ 5\left(f_{1}, \mathbf{x}, \mathbf{y}\right) &=  \frac{1}{N_{5}}\left(\left(2^{5}-1\right) \log \frac{1}{3}+\left(2^{4}-1\right) \log \frac{1}{2}+\left(2^{3}-1\right) \log \frac{1}{4}\right) \\
-& +\frac{1}{N_{5}}\left(\left(2^{2}-1\right) \log \frac{1}{5}+\left(2^{1}-1\right) \log \frac{1}{6}\right), \\
-&=xxxx \\
- N D C G @ 5\left(f_{2}, \mathbf{x}, \mathbf{y}\right) &= \frac{1}{N_{5}}\left(\left(2^{5}-1\right) \log \frac{1}{2}+\left(2^{4}-1\right) \log \frac{1}{3}+\left(2^{3}-1\right) \log \frac{1}{6}\right) \\
-& +\frac{1}{N_{5}}\left(\left(2^{2}-1\right) \log \frac{1}{5}+\left(2^{1}-1\right) \log \frac{1}{4}\right),\\
-&=xxxxx
-\end{aligned}
-$$
+
+
+
 ​	NDCG这样的评估指标反映用户会更关注排序靠前的结果，因此排序列表中若错误地排错了靠前的物品会比错误排序靠后的物品更加严重，而ListMLE则无法捕捉这样的位置信息。 
 
 ### 3.3.5  Bolztman Rank
@@ -417,11 +403,30 @@ $$
 \big(\log \mathbf p_{\theta k} -\log(-\log\epsilon_k)\big)^k
 \end{pmatrix}
 $$
-​	前面讲过$\arg\max$算子不可导，通常用算子$\operatorname{softmax with temperature}$近似，因此得到了$\operatorname{Gumbel Max}$的可导近似$\operatorname{Gumbel Softmax}$，回到主题上，值得注意的是我们并不是从类别分布中采样，我们是重参数化$\mathbf z\sim \operatorname{Plackett-Luce}(\mathbf s)$采样，因此不是直接套用$\operatorname{Gumbel Softmax}$，而是采用$\operatorname{Gumbel Sinkhorn}$，具体流程如下：
-
-
-
+​	前面讲过$\arg\max$算子不可导，通常用算子$\operatorname{softmax with temperature}$近似，因此得到了$\operatorname{Gumbel Max}$的可导近似$\operatorname{Gumbel Softmax}$，回到主题上，利用Gumbel-Max trick，对得分向量$\mathbf s$中每个元素加上独立Gumbel噪声，使得:
+$$
+\tilde {\mathbf s}=\beta\log\mathbf s_i+g_i,g_i\sim \operatorname{Gumbel}(0,1)
+$$
+​	然后对得到的$\tilde {\mathbf s}$进行排序，对应的置换向量为$\tilde {\mathbf z}$，对应的置换矩阵就是$P_{\operatorname{\tilde {\mathbf s}}}$，和确定性排序一样，利用$\operatorname{softmax with temperature}$近似，即：
+$$
+\lim _{\tau \rightarrow 0^{+}} \widehat{P}_{\operatorname{sort}(\tilde {\mathbf{s}})}[i,:](\tau)=P_{\operatorname{sort}(\tilde {\mathbf{s}}))}[i,:] \quad \forall i \in\{1,2, \ldots, n\}
+$$
+​	因此，重参数化后的优化目标可以表示如下：
+$$
+\begin{aligned}\mathcal L(\theta,\mathbf s)=\mathbb E_{\mathbf g\sim \operatorname{Gumbel}(0,1)}\big[f(\hat P_{\operatorname{sort}(\beta\log \mathbf s+\mathbf g)};\theta)\big]\\
+\nabla_{\mathbf s}\mathcal L(\theta,\mathbf s)=\mathbb E_{\mathbf g\sim \operatorname{Gumbel}(0,1)}\big[\nabla_{\mathbf s}f(\hat P_{\operatorname{sort}(\beta\log \mathbf s+\mathbf g)};\theta)\big]\end{aligned}
+$$
 ​	
+
+> [!IMPORTANT]
+>
+> $\operatorname{Gumbel}$分布式形式如下：
+>
+> xxxx
+
+​	以$\operatorname{kNN}$为例：
+
+
 
 
 
