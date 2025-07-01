@@ -1,36 +1,56 @@
 # Learning to Rank
 
-# 1.信息检索
+​	
 
-## 1.1 排序学习
+​	
 
+# 1.Recall
 
+## 1.1 Sentence BERT
 
-# 2.稠密检索技术
+![image-20250701150319806](E:\Study\gitpro\knowledge-planet\NLP系列\assets\image-20250701150319806.png)
 
-## 2.1Sentence-BERT
+##1.2 SimCSE
 
+​	SimCSE通过对比学习的方式学习句向量的语义表征，仅用简单的Dropout技术就显著提升了句子嵌入的质量，在多个语义相似度任务上刷新了SOTA。SimCSE的核心思想是**让相似的句子在向量空间中靠近，不相似的远离**，创新点在于构造正负样本的方式，其可分为无监督和有监督两个版本，具体原理如下图：
 
+![image-20250701150217824](E:\Study\gitpro\knowledge-planet\NLP系列\assets\image-20250701150217824.png)
 
-## 2.2SimCSE
-
-### 
-
-# 3.Ranking
-
-
-
-## 3.1 Point-Wise
+### 1.2.1 无监督
 
 
 
-##3.2 Pair-Wise
+### 1.2.2 有监督
 
-### 3.2.1 RankSVM&IRSVM
+​	有监督SimCSE利用自然语言推理（NLI）数据集，**正样本**：蕴涵（entailment）关系的句子对。**负样本**：矛盾（contradiction）关系的句子对。通过构造负样本，在一个Batch内让模型区分更多的句子对显著提示模型学习的语义表征质量。这个思想可以拓展到不同类型的下游任务而不仅仅是NLI数据集，一个典型的场景是文档检索场景，我们可以为查询$query$召回多个语义相似的候选文档作为负样本，具体地，我们可以将一个查询，查询对应的真实文档，相关文档三者作为一个样本对$(query,doc^+,doc_j^-)$。多个这样的样本对组成一个Batch作为神经网络输入，通过对比损失提升模型在下游任务上的性能，具体原理如下图：
+
+![image-20250701153752592](E:\Study\gitpro\knowledge-planet\NLP系列\assets\image-20250701153752592.png)
+
+​	首先是有监督无负样本，此时查询，查询对应的真实文档$(query_i,doc_i^+)$作为一个样本对，$N$个这样的样本对构成一个Batch,因此一个Batch有$2N个$输入，神经网络输出$2N$个对应的语义向量，这$2N$个语义向量先两两计算预先相似度得到一个相似度方阵$\mathbf S$，其中$\mathbf S_{ij}=\operatorname{Sim}(\mathbf h_i,\mathbf h_j)$，SimCSE的思想是，只比较$query_i$和其他的$doc_j^+$之间的语义相似度，不比较$query_i$和$query_j$的语义相似度，因此在方阵$\mathbf S$中只取第奇数行，第偶数列。因为第$2,4,\ldots,2n$行都是$doc_j^+$和其他比，我们不需要这部分比较的信息，其已经蕴含在$query_i$和其他比的信息中了。而第技术列都是$query_i$和$query_j$比，因此这部分信息我们也不需要。于是我们只在第偶数行上算交叉熵损失便等价于对比损失。同样的，是一个负样本的有监督SimCSE，那么当是第$(2k),(2k+1),k=1,...,n$行不需要考虑，第$3k-2,k=1,..,n$列不需要考虑，在此基础上采用交叉熵损失等价于对比损失。此外，论文引入了温度系数$\tau$来控制负样本带来的影响，即$\operatorname{softmax with temperature}$，温度系数越大，则受负样本的影响越小，温度系数越小，则更容易受到影响，具体分析如下[[x]]()：记模型为$\mathbf E(\cdot)$，当前查询为$query_i$，对应的正样本为$doc_i^+$，负样本为$doc_{i}^-$，有$\mathbf E(query_i)=\mathbf h_i,\mathbf E(doc_i^+)=\mathbf h_i^+,\mathbf E(doc_i^-)=\mathbf h_i^-$。
+$$
+\begin{aligned}\lim_{\tau\rightarrow0^+}\frac{\exp(\operatorname{Sim}(\mathbf h_i,\mathbf h_j^+)/\tau)}{\sum_{k=1}^{n}\exp(\operatorname{Sim}(\mathbf h_i,\mathbf h_k^+)/\tau)+\exp(\operatorname{Sim}(\mathbf h_i,\mathbf h_k^-)/\tau)}\end{aligned}
+$$
 
 
+# 2.Ranking
 
-### 3.2.2 RankNet& lambda Rank
+​	在信息检索（IR）和推荐系统领域，排序（Ranking）问题始终是核心任务之一。从搜索引擎返回的网页列表，到电商平台为用户推荐的商品，排序算法无处不在。为了更智能、更个性化地进行排序，**Learning to Rank（L2R，学习排序）** 应运而生。Learning to Rank 的起源可以追溯到 2000 年代初期，随着机器学习在自然语言处理和信息检索中的广泛应用，人们逐渐意识到传统的基于规则或启发式的排序方法难以应对复杂的用户需求。2005 年，微软亚洲研究院发表了著名的 RankNet（基于神经网络的排序学习模型），随后又推出 LambdaRank 和 LambdaMART，这些工作开启了用监督学习方法直接优化排序的新时代。排序方法整体可分为Point-Wise,Pair-Wise,List-Wise三种，本文接下来讲按照顺序介绍这三种方法的思想与具体细节。
+
+## 2.1 Point-Wise
+
+​	Point-Wise Ranking 是学习排序的一类方法，它把排序任务视为 **回归或分类问题**。因此通常采样$\text{BCE Loss}$或者$\text{Focal Loss}$作为策略，以文档排序的场景为例，我们用BERT作为Cross Encoder捕获查询和文档间细粒度的语义交互，给定一个查询$query_i$、相关的文档$doc_i^+$（这里笔者假定只有一个相关文档，实际上可以有多个）和对应的$m$个候选文档$doc_{ij}^-,j=1,\ldots,m$，将$query_i$和对应的文档通过特殊符号$\text{[CLS][SEP]}$拼接后作为BERT的输入，由可训练的线性层$\mathbf W$映射后再经过$\operatorname{sigmoid}$函数得到对应的分数$s_i$，对于正样本的得分$s_i$，应该越接近$1$越好，对于负样本得分$s_j$，应该越接近$0$越好。如下图：
+
+![image-20250701180409168](E:\Study\gitpro\knowledge-planet\NLP系列\assets\image-20250701180409168.png)
+
+​	Point-Wise 把排序问题当作 **独立的回归或分类任务** 来做，预测每个样本的分值或概率。但排序真正关心的是 **文档之间的相对顺序**（比如NDCG、MAP、MRR 等），Point-Wise 并没有直接针对这些指标优化，因此即便模型预测的分值接近真实分值，也可能导致最终的排序顺序完全错误。此外，Point-Wise损失函数通常不能反映“局部排序错误”的严重程度，如把排名第$1$的文档得分预测稍低一些，导致其拍到了后几位，损失函数依然非常小，但是上线后用户体验和位置有关的衡量指标都很差。如果训练集中有大量负样本，模型可能只学会输出低分来降低损失，即便是类别加权的损失也难以将模型改进到正常水平。
+
+##2.2 Pair-Wise
+
+### 2.2.1 RankSVM
+
+​	RankSVM 是Pair-Wise方法中最经典、最具代表性的方法之一，它将排序问题转化为一个类似成对比较的二分类问题，并借助支持向量机（SVM）的思想进行求解。本文将详细介绍 RankSVM 的思想、数学推导，并解释如何求解该优化问题。
+
+### 2.2.2 RankNet& lambda Rank
 
 ​	RankNet 的核心思想是使用 **成对比较（pairwise approach）** 来学习一个排序函数，该函数可以根据文档对$(doc_i,doc_j)$的相关性预测它们相对于查询$q$的排序顺序。RankNet 的损失函数可以表示为：	
 $$
@@ -40,15 +60,17 @@ $$
 $$
 ​	对于给定的查询$Q$，$S_{ij}\in\{−1,0,1\}$取值如下：$S_{ij}=1$：如果 $doc_i$ 比 $doc_j $更相关；$S_{ij}=0$：如果 $doc_i$ 和 $doc_j$ 相关性相同；$S_{ij}=−1$：如果 $doc_i$ 比更不相关。$s_i$ 和$s_j$分别表示文档$doc_i$和$doc_j$的相关性评分。$\sigma$是一个超参数，用于缩放$s_i-s_j$的值。
 
-### 3.2.4 Adaptive Schema and unified perspective
+### 2.2.4 Other Strategy
 
 
 
-##3.3 List-Wise
+
+
+##2.3 List-Wise
 
 ​	listwise方法可以分为两类，位置有关的指标优化与位置无关的指标优化[x]。和位置有关的衡量指标有$MRR$,$MAP$,$NDCG$等，而模型参数关于这些衡量指标不可导，我们通常采用函数近似的方式构造一个可导函数作为优化目标，从而实现模型参数的更新。首先，我们需要明确的是，什么衡量指标/算子是不可导的？
 
-### 3.3.1 不可导算子的可导近似
+### 2.3.1 不可导算子的可导近似
 
 ​	学高等数学的时候我们知道导数是指函数描述的是函数在某一处的变化率，可导描述的就是指导数在某一处的变化率是否存在，常见的可到操作有：加减乘除、平方、对数、指数、线性变化、切片等。而不可导就是指函数在某些点处的导数不存在，或者不具备可微性，常见的不可导操作有：阶跃函数、$\arg\max$​、$\max$、指示函数、排序、采样。
 
@@ -68,7 +90,7 @@ $$
 $$
 ​	$K$越大则近似越好，当$K$取$1$时则$\max$算子的近似就是$\operatorname{log sum exp}$​。$\operatorname{sort}$算子和采样算子笔者将会在接下来的章节详细介绍。
 
-### 3.3.2 SoftRank
+### 2.3.2 SoftRank
 
 ​	SoftRank的思想是过文档的得分和排名进行概率建模，实现了对NDCG等指标的可微近似，从而使得梯度下降等优化方法得以应用。$NDCG$指标计算依赖于$DCG$和$IDCG$，但是$DCG$这个指标中涉及到了$\mathrm {sort}$的操作是不可导算子，因此训练时没法直接反向传播，如果将$DCG$和$IDCG$有一个平滑点的可导函数近似，那$NDCG$自然也就可导了。
 
@@ -80,7 +102,7 @@ $$
 $$
 \begin{aligned} \pi_{ij} :=  \operatorname{Pr}(S_i-S_j>0)=\int_{0}^{\infin} \mathcal N(s|\bar {s_i}-\bar{s_j},2\sigma_s^2) \operatorname {d}s \end{aligned}
 $$
-![image-20250325182632385](assets\Gaussian-area.png)	
+![image-20250325182632385](assets\learning2rank\Gaussian-area.png)	
 
 ​	我们可以基于成对比较的方式来近似排序，其背后直觉如下：如果文档$doc_j$的排名比较靠后，说明其和其他文档在对比时都被打败了，具体地：假设共计$5$个文档，$doc_2$的排名为$4$（从$0$开始排），说明$doc_2$在和其他四个比较时都被打败了，如果其他文档$doc_j$打败$doc_2$的概率较大，则说明$\pi_{i2},i\neq2$较大，当$\bar{s_i}-\bar{s_2}$较大时高斯分布大于$0$部分的面积接近$1$，此时有$r_{doc_2}=4\approx \sum_{i=1,i\neq 2}\pi_{i2}$。因此任意文档$j$的排序$r_j$的期望可以表示如下：
 $$
@@ -105,7 +127,7 @@ P(r_j=k)=\sum_{\substack{E\subseteq\{1,2,...,N\} \setminus \{j\}\\|E|=K}}^{}\big
 $$
 ​	该概率质量函数虽然是解析式，但计算时需遍历子集，属于“非封闭形式”（因涉及到组合爆炸）。通常我们需要迭代进行求解，现在来思考一下不同视角下的$P(r_j=k)$的表达方式，从一开始，假设只有一个文档$doc_j$，那么第一次排序其排在位置$0$的概率必然是1，现在有第二个文档$doc_i,i\neq j$进来，我们需要确认文档$doc_j$排在$0$还是$1$，这种情况下如果$doc_j$仍然排在$0$的概率是$1-\pi_{ij}$，排在$1$的概率是从$0$位置跌落一名$\pi_{ij}$。假设有第三篇文档进来，则文档$doc_j$的位置排名只可能出现排序不变及往下跌落一位的情况，不可能上升，如果我们将文档$doc_j$的排序位置视作一个状态，则这个状态只与前一个状态有关，且只可能保持不变或者由前一个状态转移到下一个相邻的状态（第3个时刻的位置3只能转移到第四个时刻的位置3或者位置4，不可能转移到位置2或位置5），整体情况如下图所示：
 
-![image-20250326165450215](assets\image-20250326165450215.png)
+![image-20250326165450215](assets\learning2rank\position-transition.png)
 
 ​	用一个类似于状态转移矩阵的方式刻画（图中灰色圆圈代表文档处于该位置的概率为0），将$P^{(i)}_j(r=k)$记作排序$i,i=1,..j-1,j+1..,N$篇文档时，文档$doc_j$排在位置$k$的概率，则我们可以写一个递推公式：
 $$
@@ -113,7 +135,7 @@ P_j^{(i)}(r=k)=P_j^{(i-1)}(r=k-1)\pi_{ij}+P_j^{(i-1)}(r=k)\big(1-\pi_{ij}\big)
 $$
 ​	最终计算得到$P_j^{(N)}(r=k):=P(r_j=k)$，针对所有的$j=1,...,N$,我们都会利用上述公式进行迭代计算得到一个位置分布向量$\mathbf P(r_j)=(P_j(0),P_j(1),....,P_j(N-1))^{\top}$，再基于公式x求得最终的$SoftNDCG$​​，作为损失函数进行反向传播。
 
-### 3.3.3Approximate Rank & SmoothRank
+### 2.3.3Approximate Rank & SmoothRank
 
 ​	Approximate Rank认为$NDCG$指标不连续的根本原因在于排序的位置关于排序的得分是一个不可导的映射，因此将排序位置用排序分数近似是一个非常直接的想法，具体地，$DCG=\sum_{i=1}^{N}g(j)D(r_j)=\sum_{i=1}^{N}g(j)/\log(1+\pi(\mathbf x_j))$，而$\pi(\mathbf x_j)$是文档在按照模型预测的相关性分数排序后的列表中的位置，从分数到位置的这个操作是不可导的，我们可以把$\pi(\mathbf x_j)$用$s_j=f(\theta,\mathbf x_j)$进行近似：
 $$
@@ -137,7 +159,7 @@ $$
 
 ​	xxxxxxxx
 
-### 3.3.4 ListNet&ListMLE
+### 2.3.4 ListNet&ListMLE
 
 ​	ListNet将排序视作一个概率分布，用交叉熵损失优化排序网络。具体地，ListNet先介绍了排列概率$\text{(Permutation Probability)}$，假设$\pi$是一个关于$n$个物品的排列，$\Phi$是一个严格单调增函数，给定一个分数列表$\mathbf s$，则排列$\pi$出现对应的概率定义为：
 
@@ -168,7 +190,7 @@ $$
 
 ​	通过Top1概率，给定一个真实标签的概率分布$\mathbf P_{\mathbf y}^{(i)}$和模型输出的概率分布$\mathbf P_{\mathbf z}^{(i)}$，我们就可以用一个度量分布的指标作为损失函数，这里笔者沿用论文中的符号，查询$q^{(i)}$对应的候选文档集合为$\mathbf d^{(i)}=\set{d^{(i)}_{1},...,d_{n^{(i)}}^{(i)}}$，查询$q^{(i)}$对应文档集合的人工标记相关性分数向量记作$\mathbf y^{(i)}=(y^{(i)}_{1},...,y^{(i)}_{n^{(i)}})$，模型预测的输出为$\mathbf z^{(i)}=(z^{(i)}_{1},...,z^{(i)}_{n^{(i)}})$，我们看一下不同标注方式下的ListNet模型的损失函数：
 
-![image-20250327155924152](assets\image-20250327155924152.png)
+![image-20250327155924152](assets\learning2rank\listwise-label.png)
 
 ​	**方式一**即上图的左半部分，假设在标注阶段的每一个文档的相关性分数都是确切的，专家关注每一篇文档的得分，查询$q^{(i)}$标签的概率分布记作$\mathbf P_{\mathbf y}^{(i)}=(P_{y^{(i)}}(1),...,P_{y^{(i)}}(n))^{\top}$，模型输出的概率分布记作$\mathbf P_{\mathbf z}^{(i)}=(P_{z^{(i)}}(1),...,P_{z^{(i)}}(n))^{\top}$，前者是目标分布，后者是真实分布，我们可以找一个度量分布的函数作为损失函数，KL散度。若采用KL散度作为损失，则$\operatorname{D}_{KL}(\mathbf P_{\mathbf y}^{(i)}||\mathbf P_{\mathbf z}^{(i)})$表达如下：
 $$
@@ -190,7 +212,7 @@ $$
 
 ​	NDCG这样的评估指标反映用户会更关注排序靠前的结果，因此排序列表中若错误地排错了靠前的物品会比错误排序靠后的物品更加严重，而ListMLE则无法捕捉这样的位置信息。 
 
-### 3.3.5  Bolztman Rank
+### 2.3.5  Bolztman Rank
 
 ​	Bolztman Rank的思想与ListNet也类似，定义一个排序概率，考虑给定分数$\mathbf s$下目标性能度量的期望值，并将该期望作为优化指标，受统计物理学中玻尔兹曼分布的启发，给定分数列表$\mathbf S^{(f)}=\set{s_1,...,s_m}$和排序$\mathbf R=\set{r_1,...,r_m}$，Boltzman Rank先定义了一个给定$\mathbf s$下$R$出现的能量作为：
 $$
@@ -215,7 +237,7 @@ f(d_j|q,D)=\phi(d_j)+\sum_{k,k\neq j}\psi(d_j,d_k)
 $$
 ​	xxxx
 
-### 3.3.6 Neural Sort&Neural NDCG
+### 2.3.6 Neural Sort&Neural NDCG
 
 ​	在上述的ListWise形式的排序中，由于$NDCG$​指标的计算关于神经网络的输出是一个不可导的操作，因此不可直接优化，可以通过函数近似替代的方式或者与位置无关的损失函数来优化网络，那有没有研究是找到一个离散的排序的可导近似呢？——NeuralSort就是一种“连续松弛”，是排序操作的可导近似。
 
@@ -235,12 +257,12 @@ $$
 
 ​	给定一个$n$维的置换向量$\mathbf z=(z_1,z_2\cdots z_n)^{\top}\in\mathbb R^n$，$z_i\in\set{1,2\cdots n}$且两两不同，对应的置换矩阵$P_{\mathbf z}$满足：
 $$
-P_{\mathbf z}=\left\{\begin{array}{ll}
-1 & \text { if } j=z_{i} \\
+P_{\mathbf z}[i,j]=\left\{\begin{array}{ll}
+1 & \text { if } j=z_{i}(\text{排序中第 i 大的元素是原始的第 j 个元素}) \\
 0 & \text { otherwise }
 \end{array}\right.
 $$
-​	假设一个输入向量$\mathbf s=(9,1,5,2)^{\top}$，且**定义**$\operatorname{sort}:\mathbb R^n\rightarrow\mathcal Z_n$算子是一个将$n$维实值向量输入映射到一个降序排列的置换向量的操作，则$\mathbf s$经过$\operatorname{sort}$作用后对应的置换向量是$\mathbf z=\operatorname{sort}({\mathbf s})=(1,4,2,3)^{\top}$，即第$1$个元素排第一位，第$2$个元素排第$4$位，第$3$个元素排第$2$位，第$4$个元素排第$3$位，置换向量对应的置换矩阵$P_{\mathbf z}$：
+​	假设一个输入向量$\mathbf s=(9,1,5,2)^{\top}$，且**定义**$\operatorname{sort}:\mathbb R^n\rightarrow\mathcal Z_n$算子是一个将$n$维实值向量输入映射到一个降序排列的置换向量的操作，则$\mathbf s$经过$\operatorname{sort}$作用后对应的置换向量是$\mathbf z=\operatorname{sort}({\mathbf s})=(1,3,4,2)^{\top}$，即第$1$个元素第$1$大，第$3$个元素第$2$大，第$4$个元素第$3$大，第$2$个元素第$4$大，置换向量对应的置换矩阵$P_{\mathbf z}$：
 $$
 P_{\mathbf z}=\left[\begin{array}{llll}
 1 & 0 & 0 & 0 \\
@@ -252,9 +274,11 @@ $$
 
 > [!IMPORTANT]
 >
-> 给定一个输入向量$\mathbf s$，其对应一个置换向量$\mathbf z$和置换矩阵$P$，则置换矩阵$P$的元素$P[i,j]=1$时的含义是输入向量$\mathbf s_j$一定是第$i$大的。如上案例，$P[1,1]=1$，$\mathbf s_1=9$是第$1$大的。$P[2,3]=1$，$\mathbf s_3= 5$是第$2$大的，$P[3,4]=1$，$\mathbf s_4=2$是第$3$大的。即如果输入$\mathbf s_j$是第$i$大的，则矩阵第$j$列第$i$行为$1$。
+> **从列的视角看：**给定一个输入向量$\mathbf s$，其对应一个置换向量$\mathbf z$和置换矩阵$P$，则置换矩阵$P$的元素$P[i,j]=1$时的含义是输入向量$\mathbf s_j$一定是第$i$大的。如上案例，$P[1,1]=1$，$\mathbf s_1=9$是第$1$大的。$P[2,3]=1$，$\mathbf s_3= 5$是第$2$大的，$P[3,4]=1$，$\mathbf s_4=2$是第$3$大的，$P[4,2]=1$，$\mathbf s_2=1$是第$4$大的。即如果输入$\mathbf s_j$是第$i$大的，则矩阵第$j$列第$i$行为$1$。
+>
+> **从行的视角看：**第 $i$ 行告诉你第 $i $大的元素来自哪个原始索引。
 
-​	给定任意$\mathbf s$我们需要先找其和到$P_{\operatorname{sort}(s)}$明确的数学表达关系，我们知道的是$P_{\operatorname{sort}(s)}[i,j]=1$一定代表$\mathbf s_j$第$i$大，第$1$大可以用$\max$，最小可以用$\min$，但是第$i$大这个该如何通过数学公式描述？我们需要借用这样一个引理：
+​	给定任意$\mathbf s$我们需要先找其和到$P_{\operatorname{sort}(s)}$明确的数学表达关系，我们知道的是$P_{\operatorname{sort}(s)}[i,j]=1$一定代表排序后第$i$大的元素对应于原始索$j$，第$1$大可以用$\max$，最小可以用$\min$，但是第$i$大这个该如何通过数学公式描述？我们需要借用这样一个引理：
 
 > For an input vector $\mathbf s = [s_1, s_2, \cdots,s_n] ^{\top}$ that is sorted as $s[1] ≥ s[2] ≥\cdots≥s[n]$ , we have the sum of the $k$-largest elements given as:
 > $$
@@ -282,7 +306,7 @@ $$
 $$
 ​	我们会发现这是一个差分$\min$运算，会让优化问题变得复杂，不便于接下来的推导。为此，我们必须想一种方式让优化目标只有一个$\min$。等式$\sum_{i=1}^{k} \mathbf s_{[i]}=\lambda k+\sum_{i=1}^{n} \mathbf \max(s_{i}-\lambda,0)$的成立条件是$\mathbf s_{[k]}\geq \lambda \geq \mathbf s_{[k+1]}$，我们思考是否可以再构造一个优化目标使得$\mathbf s_{[k-1]}\geq \lambda \geq \mathbf s_{[k]}，$这样就可以通过夹逼的方式强迫$\lambda=\mathbf s_{[k]}$，优化$\lambda$使得目标最小就得到了最终的$\mathbf s_{[k]}$。换个角度想，前$k$大其实等价于后$n-k+1$小，如果将$\mathbf s$取负即令$\mathbf t=-\mathbf s$，则$\mathbf t$的前$n-k+1$大等价于$\mathbf s$的后$n-k+1$小等价于$\mathbf s$的前$k$​大。如下是一个直观的例子：
 
-![image-20250620110756812](assets\image-20250620110756812.png)
+![image-20250620110756812](assets\learning2rank\reverse-index.png)
 
 ​	因此可以同样使用引理2把$\mathbf t$的前$n-k+1$大的和写成：
 $$
@@ -323,7 +347,7 @@ $$
 \end{pmatrix}\\
 &=\arg \max [(n+1-2k)\mathbf s-\mathbf A_i\mathbb 1]\end{aligned}
 $$
-​	作用是找到该向量中分量值最大元素对应的索引。若结果是索引$i$，则说明$\mathbf s_i=\mathbf s_{[k]}$，理清了这层关系，我们开始构造置换矩阵$P$。我们回顾一下之前所述：置换矩阵$P$的元素$P[i,j]=1$时的含义是输入向量的分量$\mathbf s_j$一定是第$i$大的，且置换矩阵每一行每一列和为$1$，因此构造置换矩阵的列从左往右看就需要知道$\mathbf s_1,\mathbf s_2,...,\mathbf s_n$分别第几大。构造一个$n\times n$的置换矩阵时，逻辑如下，我们从行开始构造，选定第$i$行，先构造左边第一列，那么我们就判断$\mathbf s_1=\mathbf s_{[k]}$时的$k$是多少，则$P[k,1]=1$，第$k$行之外的其他行$P[i,1]=0,i\neq k$​。那$\mathbf s_i$第几大我们要一一判断，从$k=1,2,...,n$，对于第$1$列而言，只要：
+​	作用是找到该向量中分量值最大元素对应的索引。若结果是索引$i$，则说明$\mathbf s_i=\mathbf s_{[k]}$，即排序后第$k$大的元素来自于原始索引$i$，理清了这层关系，我们开始构造置换矩阵$P$。我们按照行进构造，即先找排序后第$1$大的元素对应与原始索引是多少，再以此类。选定第$1$行，从左往右，那么我们就判断$\mathbf s_1=\mathbf s_{[k]}$时的$k$是多少，则$P[1,k]=1$，第$k$行之外的其他行$P[i,1]=0,i\neq k$。那$\mathbf s_i$第几大我们要一一判断，从$k=1,2,...,n$，对于第$1$​列而言，只要：
 $$
 \begin{aligned} \arg \max \begin{pmatrix}
 \mathbf s_1(n+1-2k)-\sum_{i=1}^{n}|\mathbf s_i-\mathbf s_1| \\
@@ -332,21 +356,21 @@ $$
 \mathbf s_n(n+1-2k)-\sum_{i=1}^{n}|\mathbf s_i-\mathbf s_n|
 \end{pmatrix}=1，\text{for k in }1,2,...,n\end{aligned}
 $$
-​	便能说明$\mathbf s_1=\mathbf s_{[k]}$，因此，对于第一列我们可以写成：
+​	便能说明$\mathbf s_1=\mathbf s_{[k]}$，因此，对于第$1$行我们可以写成：
 $$
-\begin{aligned}P[i,1]==\left\{\begin{array}{ll}
-1 & \text { if } 1=\arg \max [(n+1-2i)\mathbf s-\mathbf A_i\mathbb 1] \\
+\begin{aligned}P[1,j]==\left\{\begin{array}{ll}
+1 & \text { if } j=\arg \max [(n+1-2)\mathbf s-\mathbf A_i\mathbb 1] \\
 0 & \text { otherwise }
 \end{array}\right.\end{aligned}
 $$
-​	同理，第二列我们可以写成：
+​	同理，第二行我们可以写成：
 $$
-\begin{aligned}P[i,2]==\left\{\begin{array}{ll}
-1 & \text { if } 2=\arg \max [(n+1-2i)\mathbf s-\mathbf A_i\mathbb 1] \\
+\begin{aligned}P[2,j]==\left\{\begin{array}{ll}
+1 & \text { if } j=\arg \max [(n+1-2\times 2)\mathbf s-\mathbf A_i\mathbb 1] \\
 0 & \text { otherwise }
 \end{array}\right.\end{aligned}
 $$
-​	以此类推，第$j$列我们可以写成，这便是一个统一的形式：
+​	以此类推，第$i$行我们可以写成的形式：
 $$
 \begin{aligned}P[i,j]==\left\{\begin{array}{ll}
 1 & \text { if } j=\arg \max [(n+1-2i)\mathbf s-\mathbf A_i\mathbb 1] \\
@@ -403,7 +427,7 @@ $$
 \big(\log \mathbf p_{\theta k} -\log(-\log\epsilon_k)\big)^k
 \end{pmatrix}
 $$
-​	前面讲过$\arg\max$算子不可导，通常用算子$\operatorname{softmax with temperature}$近似，因此得到了$\operatorname{Gumbel Max}$的可导近似$\operatorname{Gumbel Softmax}$，回到主题上，利用Gumbel-Max trick，对得分向量$\mathbf s$中每个元素加上独立Gumbel噪声，使得:
+​	前面讲过$\arg\max$算子不可导，通常用算子$\operatorname{softmax with temperature}$近似，因此得到了$\operatorname{Gumbel Max}$的可导近似$\operatorname{Gumbel Softmax}$，回到主题上，利用Gumbel-Max trick，对得分向量$\mathbf s$中每个元素加上独立$\operatorname{Gumbel}$噪声，使得:
 $$
 \tilde {\mathbf s}=\beta\log\mathbf s_i+g_i,g_i\sim \operatorname{Gumbel}(0,1)
 $$
@@ -416,43 +440,47 @@ $$
 \begin{aligned}\mathcal L(\theta,\mathbf s)=\mathbb E_{\mathbf g\sim \operatorname{Gumbel}(0,1)}\big[f(\hat P_{\operatorname{sort}(\beta\log \mathbf s+\mathbf g)};\theta)\big]\\
 \nabla_{\mathbf s}\mathcal L(\theta,\mathbf s)=\mathbb E_{\mathbf g\sim \operatorname{Gumbel}(0,1)}\big[\nabla_{\mathbf s}f(\hat P_{\operatorname{sort}(\beta\log \mathbf s+\mathbf g)};\theta)\big]\end{aligned}
 $$
-​	
+​	接下来结合$\operatorname{kNN}$的例子加强对该算法的理解，我们先回顾一下原始的$\operatorname{kNN}$，$\operatorname{kNN}$是一种 **非参数（non-parametric）监督学习算法**，既可以用于分类，也可以用于回归。其核心思想非常简单：
 
-> [!IMPORTANT]
->
-> $\operatorname{Gumbel}$分布式形式如下：
->
-> xxxx
+> **对于一个新的样本点，找到训练集中离它最近的 k 个点，然后通过这些点的标签来“投票”或“平均”，决定它的输出。**
 
-​	以$\operatorname{kNN}$为例：
+​	假设一个分类任务，给定训练样本和对应的标签$\mathcal D=\{(\mathbf x_1,y_1),(\mathbf x_2,y_2),...,(\mathbf x_n,y_n)\}$，要预测新的样本$\mathbf x_{\text{new}}$属于哪一个类别，那么只需判断该新样本距离最近的$k$个（$k$是超参数）距离$d$对应的训练数据的类别，再透过投票来决定该样本所述的类别即可。距离$d$可以是欧氏距离、余弦相似度、曼哈顿距离等。具体地，选取一个查询样本$\mathbf {(x_0,y_0)}$，随机选取$n$个样本作为其候选邻居$ {(\mathbf x_1,y_1),\ldots ,(\mathbf x_n,y_n)}$，然后神经网络会学到一个映射表示$h_{\phi}(\cdot)$，将输入编码成高维语义向量，即$h_{\phi}(\mathbf x_i)^{\top}\in\mathbb R^{h\times 1}$，然后计算查询样本和候选样本在语义空间中的度量：
+$$
+\mathbf s_j=|| h_{\phi}(\mathbf x_0) -h_{\phi}(\mathbf x_j)||^2_2,j=1,\ldots,n
+$$
+​	得到了分数向量便可以采用$\operatorname{NeuralSort}$的松弛排序$\hat P_{\operatorname{sort}(\mathbf s)}$，而策略的选择，即$f$可以用如下公式：
+$$
+\mathcal l_{\operatorname{kNN}}(\hat P_{\operatorname{sort}(\mathbf s)},y_0,\ldots,y_n)==-\frac{1}{k} \sum_{j=1}^{k} \sum_{i=1}^{n} 1\left(y_{i}=y_{0}\right) \hat{P}_{z}[i, j]
+$$
+​	本质上就是交叉熵损失。即按照列的方向扫过去，判断前$k$列预测的结果和真实结果是否一致。在推理时，给定测试样本$\mathbf x'_0$，先计算对应的语义表征$\mathbf e_0=h_{\phi}(\mathbf x_0')$,计算训练集中所有点的语义表征$e_j=h_{\phi}(\mathbf x_j),j=1,\ldots,|\mathcal D|$，然后用欧式距离排序，选择$k$​个最近邻居，通过多数投票确定预测标签。原论文还有手写数字识别数据集和分位回归任务的实验，理解了上文的讲解便能触类旁通，笔者就不在此展开介绍了。
+
+​	上文中提到$NDCG$指标计算依赖于$DCG$和$IDCG$，$DCG$中涉及到了$\mathrm {sort}$的操作是不可导算子，导致神经网络无法优化，那么现在有了$\operatorname{NeuralSort}$便可以自然地想到将可导的置换矩阵用于近似排序算子从而优化$\operatorname{NDCG@k}$，回顾一下公式：
+$$
+\begin{aligned}\operatorname{NDCG@}k&=\frac{\operatorname{DCG@}k}{\operatorname{IDCG@}k} \\
+\operatorname{DCG@}k=\frac{}{}\\
+\operatorname{IDCG@}k=\frac{}{}\end{aligned}
+$$
 
 
+# 3.Ranking skills in Direct Preference Optimization
 
+## 3.1 Preference Feedback
 
-
-
-
-
-
-# 4.Ranking skills in Direct Preference Optimization
-
-## 4.1 Preference Feedback
-
-### 4.1.1 Pair-Wise Feedback
+### 3.1.1 Pair-Wise Feedback
 
 ​	成对反馈侧重于比较成对问答的偏序关系，即$(x_i,y^{(i)}_j)$与$(x_i,y^{(i)}_k)$，从而判断回答的相对好坏。DPO在RLHF的理论框架基础上，利用成对偏好数据实现了这一范式，从而拟合了隐式奖励模型[[x]]()。
 
-### 4.1.2 List-Wise Feedback
+### 3.1.2 List-Wise Feedback
 
 ​	
 
 
 
-## 4.2 Preference Granularity
+## 3.2 Preference Granularity
 
 
 
-# 5.参考文献
+# 4.参考文献
 
 [[1]]()
 
