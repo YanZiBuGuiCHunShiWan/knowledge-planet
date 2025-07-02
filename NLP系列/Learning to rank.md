@@ -26,7 +26,7 @@
 
 ![image-20250701153752592](E:\Study\gitpro\knowledge-planet\NLP系列\assets\image-20250701153752592.png)
 
-​	首先是有监督无负样本，此时查询，查询对应的真实文档$(query_i,doc_i^+)$作为一个样本对，$N$个这样的样本对构成一个Batch,因此一个Batch有$2N个$输入，神经网络输出$2N$个对应的语义向量，这$2N$个语义向量先两两计算预先相似度得到一个相似度方阵$\mathbf S$，其中$\mathbf S_{ij}=\operatorname{Sim}(\mathbf h_i,\mathbf h_j)$，SimCSE的思想是，只比较$query_i$和其他的$doc_j^+$之间的语义相似度，不比较$query_i$和$query_j$的语义相似度，因此在方阵$\mathbf S$中只取第奇数行，第偶数列。因为第$2,4,\ldots,2n$行都是$doc_j^+$和其他比，我们不需要这部分比较的信息，其已经蕴含在$query_i$和其他比的信息中了。而第技术列都是$query_i$和$query_j$比，因此这部分信息我们也不需要。于是我们只在第偶数行上算交叉熵损失便等价于对比损失。同样的，是一个负样本的有监督SimCSE，那么当是第$(2k),(2k+1),k=1,...,n$行不需要考虑，第$3k-2,k=1,..,n$列不需要考虑，在此基础上采用交叉熵损失等价于对比损失。此外，论文引入了温度系数$\tau$来控制负样本带来的影响，即$\operatorname{softmax with temperature}$，温度系数越大，则受负样本的影响越小，温度系数越小，则更容易受到影响，具体分析如下[[x]]()：记模型为$\mathbf E(\cdot)$，当前查询为$query_i$，对应的正样本为$doc_i^+$，负样本为$doc_{i}^-$，有$\mathbf E(query_i)=\mathbf h_i,\mathbf E(doc_i^+)=\mathbf h_i^+,\mathbf E(doc_i^-)=\mathbf h_i^-$。
+​	首先是有监督无负样本，此时查询，查询对应的真实文档$(query_i,doc_i^+)$作为一个样本对，$N$个这样的样本对构成一个Batch,因此一个Batch有$2N个$输入，神经网络输出$2N$个对应的语义向量，这$2N$个语义向量先两两计算预先相似度得到一个相似度方阵$\mathbf S$，其中$\mathbf S_{ij}=\operatorname{Sim}(\mathbf h_i,\mathbf h_j)$，SimCSE的思想是，只比较$query_i$和其他的$doc_j^+$之间的语义相似度，不比较$query_i$和$query_j$的语义相似度，因此在方阵$\mathbf S$中只取第奇数行，第偶数列。因为第$2,4,\ldots,2n$行都是$doc_j^+$和其他比，我们不需要这部分比较的信息，其已经蕴含在$query_i$和其他比的信息中了。而第奇数列都是$query_i$和$query_j$比，因此这部分信息我们也不需要。于是我们只在第偶数行上算交叉熵损失便等价于对比损失。同样的，是一个负样本的有监督SimCSE，那么当是第$(2k),(2k+1),k=1,...,n$行不需要考虑，第$3k-2,k=1,..,n$列不需要考虑，在此基础上采用交叉熵损失等价于对比损失。此外，论文引入了温度系数$\tau$来控制负样本带来的影响，即$\operatorname{softmax with temperature}$，温度系数越大，则受负样本的影响越小，温度系数越小，则更容易受到影响，具体分析如下[[x]]()：记模型为$\mathbf E(\cdot)$，当前查询为$query_i$，对应的正样本为$doc_i^+$，负样本为$doc_{i}^-$，有$\mathbf E(query_i)=\mathbf h_i,\mathbf E(doc_i^+)=\mathbf h_i^+,\mathbf E(doc_i^-)=\mathbf h_i^-$。
 $$
 \begin{aligned}\lim_{\tau\rightarrow0^+}\frac{\exp(\operatorname{Sim}(\mathbf h_i,\mathbf h_j^+)/\tau)}{\sum_{k=1}^{n}\exp(\operatorname{Sim}(\mathbf h_i,\mathbf h_k^+)/\tau)+\exp(\operatorname{Sim}(\mathbf h_i,\mathbf h_k^-)/\tau)}\end{aligned}
 $$
@@ -58,7 +58,68 @@ $$
             C=\frac{1}{2}\left(1-S_{i j}\right) \sigma\left(s_{i}-s_{j}\right)+\log \left(1+e^{-\sigma\left(s_{i}-s_{j}\right)}\right)
 \end{align}
 $$
-​	对于给定的查询$Q$，$S_{ij}\in\{−1,0,1\}$取值如下：$S_{ij}=1$：如果 $doc_i$ 比 $doc_j $更相关；$S_{ij}=0$：如果 $doc_i$ 和 $doc_j$ 相关性相同；$S_{ij}=−1$：如果 $doc_i$ 比更不相关。$s_i$ 和$s_j$分别表示文档$doc_i$和$doc_j$的相关性评分。$\sigma$是一个超参数，用于缩放$s_i-s_j$的值。
+​	对于给定的查询$Q$，$S_{ij}\in\{−1,0,1\}$取值如下：$S_{ij}=1$：如果 $doc_i$ 比 $doc_j $更相关；$S_{ij}=0$：如果 $doc_i$ 和 $doc_j$ 相关性相同；$S_{ij}=−1$：如果 $doc_i$ 比更不相关。$s_i$ 和$s_j$分别表示文档$doc_i$和$doc_j$的相关性评分。$\sigma$是一个超参数，用于缩放$s_i-s_j$​的值。
+
+​	当$S_{ij}=1$时有：
+$$
+\begin{aligned}C=\end{aligned}\log \left(1+e^{-\sigma\left(s_{i}-s_{j}\right)}\right)
+$$
+​	当$S_{ij}=0$时有：
+$$
+\begin{aligned}C=\frac{1}{2}\sigma\left(s_{i}-s_{j}\right)+\end{aligned}\log \left(1+e^{-\sigma\left(s_{i}-s_{j}\right)}\right)
+$$
+​	当$S_{ij}=-1$时有：
+$$
+\begin{align}
+            C&=\sigma\left(s_{i}-s_{j}\right)+\log \left(1+e^{-\sigma\left(s_{i}-s_{j}\right)}\right)\\
+            &=\log \left(e^{\sigma\left(s_{i}-s_{j}\right)})\right)+\log \left(1+e^{-\sigma\left(s_{i}-s_{j}\right)}\right)\\
+            &=\log \left(1+e^{\sigma\left(s_{i}-s_{j}\right)})\right)
+\end{align}
+$$
+​	$\sigma=1$时的损失函数图像如下（自变量为$s_i-s_j$）：
+
+![image-20250702163213780](E:\Study\gitpro\knowledge-planet\NLP系列\assets\image-20250702163213780.png)
+
+​	假设$s_i=\mathbf x_i^{\top}\mathbf w,s_j=\mathbf x_i^{\top}\mathbf w$，$\mathbf w\in \mathbf R^{h\times 1}$我们可以看一参数更新公式，以$w_k$（$\mathbf w$的第$k$个分量）为例：
+$$
+\begin{aligned} \frac{\partial C(s_i,s_j)}{\partial w_k}&= \frac{\partial C}{\partial s_i}\frac{\partial s_i}{\partial w_k}+\frac{\partial C}{\partial s_j}\frac{\partial s_j}{\partial w_k}\\
+&=\bigg(\frac{1}{2}\left(1-S_{i j}\right) \sigma+\frac{-\sigma e^{-\sigma(s_{i}-s_{j})}}{1+e^{-\sigma\left(s_{i}-s_{j}\right)}}\bigg)\frac{\partial s_i}{\partial w_k}+\bigg(-\frac{1}{2}\left(1-S_{i j}\right)\sigma +\frac{\sigma e^{-\sigma(s_{i}-s_{j})}}{1+e^{-\sigma\left(s_{i}-s_{j}\right)}}\bigg)\frac{\partial s_j}{\partial w_k}\\
+&=\sigma\bigg(\frac{1}{2}\left(1-S_{i j}\right) -\frac{e^{-\sigma(s_{i}-s_{j})}}{1+e^{-\sigma\left(s_{i}-s_{j}\right)}}\bigg)(\frac{\partial s_i}{\partial w_k}-\frac{\partial s_j}{\partial w_k})\\
+&=\sigma\bigg(\frac{1}{2}\left(1-S_{i j}\right) -\frac{1}{1+e^{\sigma\left(s_{i}-s_{j}\right)}}\bigg)(\frac{\partial s_i}{\partial w_k}-\frac{\partial s_j}{\partial w_k})\end{aligned}
+$$
+​	且我们可以发现：
+$$
+\frac{\partial C}{\partial s_{i}}=\sigma\left(\frac{1}{2}\left(1-S_{i j}\right)-\frac{1}{1+e^{\sigma\left(s_{i}-s_{j}\right)}}\right)=-\frac{\partial C}{\partial s_{j}}
+$$
+​	因此对应的梯度更新的公式为：
+$$
+\begin{aligned}w_k\to w_k-\eta\:\frac{\partial C}{\partial w_k}=w_k-\eta\left(\frac{\partial C}{\partial s_i}\frac{\partial s_i}{\partial w_k}+\frac{\partial C}{\partial s_j}\frac{\partial s_j}{\partial w_k}\right)\end{aligned}
+$$
+​	损失函数的变化为：
+$$
+\delta C=\sum_{k}\frac{\partial C}{\partial w_{k}}\delta w_{k}=\sum_{k}\frac{\partial C}{\partial w_{k}}\left(-\eta\frac{\partial C}{\partial w_{k}}\right)=-\eta\sum_{k}\left(\frac{\partial C}{\partial w_{k}}\right)^{2}<0
+$$
+​	即梯度下降一定沿着损失函数减小的方向更新。每次更新都会让损失值降低。然而，初版的RankNet训练效率低下——每次处理一对文档就要更新一次模型，如一个查询有$100$个候选文档，那么两两配对比较就需要$\begin{pmatrix} 100 \\ 2\end{pmatrix}$个文档对，这样的计算开销过大。我们回顾上述公式$xxxx$，可以将左边一部分复杂的公式定义：
+$$
+\lambda_{ij}\equiv\sigma\bigg(\frac{1}{2}\left(1-S_{i j}\right) -\frac{1}{1+e^{\sigma\left(s_{i}-s_{j}\right)}}\bigg)
+$$
+​	这样损失函数对单个参数分量的梯度公式就变得清爽了：
+$$
+\begin{aligned} \frac{\partial C(s_i,s_j)}{\partial w_k}&= \lambda_{ij}(\frac{\partial s_i}{\partial w_k}-\frac{\partial s_j}{\partial w_k})\end{aligned}
+$$
+​	我们可以把$\lambda_{ij}$想象成一个作用力，如果模型把本该靠前的文档$doc_i$排在了$doc_j$后面，那么$\lambda_{ij}$就会产生一个力，将$s_i$和$s_j$推开。那么这个作用力是否可以叠加与抵消呢？如果我们找到所有的$\lambda_{ij}$预先计算好这些作用力，那么就可以实现从“逐渐更新”到“批量累计更新”。考虑一个查询下所有的文档对，看看每个权重受到了 多大的推力，并将$w_k$的梯度贡献加起来，有：
+$$
+\delta w_k=-\eta\sum_{\{i,j\}\in I}\lambda_{ij}(\frac{\partial s_i}{\partial w_k}-\frac{\partial s_j}{\partial w_k})
+$$
+​	现在，这个公式可以写成更加统一的形式，
+
+
+
+
+
+
+
+​	xxxx
 
 ### 2.2.4 Other Strategy
 
@@ -117,7 +178,7 @@ $$
 \begin{aligned}DCG&=\sum_{i=1}^{N}g(j)D(r_j)\\
 &\approx \sum_{i=1}^{N}g(j)\sum_{r=0}^{N-1}D(r_j)P(r_j=r)\end{aligned}
 $$
-​	我们只要$P(r_j=k)$知道就能计算$DCG$，文档$j$的排序位置$r_j$的取值可能为$0,...,N-1$，但是我们会发现情况有点复杂，即$P(r_j=k)$的解析式表达起来很繁琐，当$r_j$取值为$0$时虽然有$P(r_j=0)=\prod_{i=1,i\neq j}^N(1-\pi_{ij})$，但是当$r_j=1$时可能是$N-1$种情况，即:
+​	只要知道$P(r_j=k)$就能计算$DCG$，文档$j$的排序位置$r_j$的取值可能为$0,...,N-1$，但是我们会发现情况有点复杂，即$P(r_j=k)$的解析式表达起来很繁琐，当$r_j$取值为$0$时虽然有$P(r_j=0)=\prod_{i=1,i\neq j}^N(1-\pi_{ij})$，但是当$r_j=1$时可能是$N-1$种情况，即:
 $$
 P(r_j=1)=\sum_{k=1,k\neq j}^{N}\big(\pi_{kj}\prod_{i=1,i\neq j，i\neq k}^{N}(1-\pi_{ij})\big)
 $$
@@ -359,21 +420,21 @@ $$
 ​	便能说明$\mathbf s_1=\mathbf s_{[k]}$，因此，对于第$1$行我们可以写成：
 $$
 \begin{aligned}P[1,j]==\left\{\begin{array}{ll}
-1 & \text { if } j=\arg \max [(n+1-2)\mathbf s-\mathbf A_i\mathbb 1] \\
+1 & \text { if } j=\arg \max [(n+1-2)\mathbf s-\mathbf A_{\mathbf s}\mathbb 1] \\
 0 & \text { otherwise }
 \end{array}\right.\end{aligned}
 $$
 ​	同理，第二行我们可以写成：
 $$
 \begin{aligned}P[2,j]==\left\{\begin{array}{ll}
-1 & \text { if } j=\arg \max [(n+1-2\times 2)\mathbf s-\mathbf A_i\mathbb 1] \\
+1 & \text { if } j=\arg \max [(n+1-2\times 2)\mathbf s-\mathbf  A_{\mathbf s}\mathbb 1] \\
 0 & \text { otherwise }
 \end{array}\right.\end{aligned}
 $$
 ​	以此类推，第$i$行我们可以写成的形式：
 $$
 \begin{aligned}P[i,j]==\left\{\begin{array}{ll}
-1 & \text { if } j=\arg \max [(n+1-2i)\mathbf s-\mathbf A_i\mathbb 1] \\
+1 & \text { if } j=\arg \max [(n+1-2i)\mathbf s-\mathbf A_{\mathbf s}\mathbb 1] \\
 0 & \text { otherwise }
 \end{array}\right.\end{aligned}
 $$
@@ -454,12 +515,87 @@ $$
 $$
 ​	本质上就是交叉熵损失。即按照列的方向扫过去，判断前$k$列预测的结果和真实结果是否一致。在推理时，给定测试样本$\mathbf x'_0$，先计算对应的语义表征$\mathbf e_0=h_{\phi}(\mathbf x_0')$,计算训练集中所有点的语义表征$e_j=h_{\phi}(\mathbf x_j),j=1,\ldots,|\mathcal D|$，然后用欧式距离排序，选择$k$​个最近邻居，通过多数投票确定预测标签。原论文还有手写数字识别数据集和分位回归任务的实验，理解了上文的讲解便能触类旁通，笔者就不在此展开介绍了。
 
-​	上文中提到$NDCG$指标计算依赖于$DCG$和$IDCG$，$DCG$中涉及到了$\mathrm {sort}$的操作是不可导算子，导致神经网络无法优化，那么现在有了$\operatorname{NeuralSort}$便可以自然地想到将可导的置换矩阵用于近似排序算子从而优化$\operatorname{NDCG@k}$，回顾一下公式：
+​	上文中$2.3$提到$\text{NDCG}$指标计算依赖于$\text{DCG}$和$\text{IDCG}$，$\text{DCG}$中涉及到了$\mathrm {sort}$的操作是不可导算子，导致神经网络无法优化，那么现在有了$\operatorname{NeuralSort}$便可以自然地想到将可导的置换矩阵用于近似排序算子从而优化$\operatorname{NDCG@k}$，回顾一下公式：
 $$
 \begin{aligned}\operatorname{NDCG@}k&=\frac{\operatorname{DCG@}k}{\operatorname{IDCG@}k} \\
-\operatorname{DCG@}k=\frac{}{}\\
-\operatorname{IDCG@}k=\frac{}{}\end{aligned}
+\operatorname{DCG@}k&=\sum_{i=1}^{k}\frac{2^{r_i}-1}{\log_{2}(i+1)}=\sum_{i=1}^{k}g( r_i)d(i)\\
+\operatorname{IDCG@}k&=\sum_{i=1}^{k}\frac{2^{r_i^*}-1}{\log_{2}(i+1)}\end{aligned}
 $$
+
+​	其中$g(r_i)=2^{r_i}-1$是增益因子，$d(i)=1/\log_{2}(i+1)$是折扣因子。$\text{IDCG}@k$中$r^*_i$是按照标签相关性分数排序后排在第$i$位的文档的相关性分数。也就是说，给定了查询$query$和对应的打好了标签的候选文档集合$\{(doc_i,r_i)\}_{i=1}^{k}$，那么$\text{IDCG}@k$就是固定的，可以提前计算好。而$\operatorname{DCG@}k$的计算要依赖于神经网络输出的文档相关性分数向量$\mathbf s$排序，得到排序后的分数向量中对应的$r_i$。给定神经网络的输出分数向量$\mathbf s$，$\mathbf s$对应于一个置换矩阵$P_{\operatorname{sort}(s)}$，给$\mathbf s$排序等价于置换矩阵右乘以$\mathbf s$即$P_{\operatorname{sort}(s)}\mathbf s$，为了可导的性质，我们实际上用一个单峰行随机矩阵$\hat P_{\operatorname{sort}(s)}(\tau)$来近似真正的$P_{\operatorname{sort}(s)}$（$\operatorname{NeuralSort}$）。
+$$
+\lim _{\tau \rightarrow 0^{+}} \widehat{P}_{\operatorname{sort}(\mathbf{s})}[i,:](\tau)=\operatorname{softmax}\left[\left((n+1-2 i) \mathbf s-A_{\mathbf s} \mathbb{1}\right) / \tau\right] \quad \forall i \in\{1,2, \ldots, n\}
+$$
+​	$\hat P_{\operatorname{sort}(s)}(\tau)$在下文记作。为计算$\operatorname{DCG@}k$，我们要知道按照$\mathbf s$排序后对应的相关性分数$r_i$和增益$g_i$，因此有$\hat P g(\mathbf r)$，意思是相关性标签列表按照$\mathbf s$大小进行排序对应的增益。因此最原始情况下的$\operatorname{NeuralNDCG}@k(\tau)(\mathbf {s,r})$公式可以表达如下：
+$$
+\begin{aligned} \operatorname{NeuralNDCG}@k(\tau)(\mathbf {s,r})=\frac{\sum_{i=1}^{k}\big(\hat P g(\mathbf r)\big)_id(i)}{\operatorname{IDCG@}k}\end{aligned}
+$$
+​	$\hat P$矩阵的性质是每一行之和为$1$，每一列之和不一定为$1$，这样的性质会有什么影响呢？我们可以分别看公式：$\begin{aligned}\sum_{i=1}^{k}P g(\mathbf r)\end{aligned}$与$\begin{aligned}\sum_{i=1}^{k}\hat P g(\mathbf r)\end{aligned}$。前者是文档真实的获得的增益有：
+$$
+\begin{aligned} \end{aligned}\begin{aligned}\sum_{i=1}^{k}(P g(\mathbf r))_i=\sum_{i=1}^{k}\sum_{j=1}^{k}P[i,j]g(\mathbf r)_j=\sum_{i=1}^{k}g(r_i)\end{aligned}
+$$
+​	后者为：
+$$
+\begin{aligned} \end{aligned}\begin{aligned}\sum_{i=1}^{k}(\hat P g(\mathbf r))_i&=\sum_{i=1}^{k}\sum_{j=1}^{k} \hat P[i,j]g(\mathbf r)_j\\
+&=\sum_{j=1}^{k}g(r_j)\sum_{i=1}^{k}\hat P[i,j]\\
+&\neq \sum_{i=1}^{k}g(r_i)\end{aligned}
+$$
+​	也就是说近似的置换矩阵每一列之和不为$1$会使得最终计算的增益要么变大要么变小，即某个文档的增益在排名中可能超量也可能少量，导致$\operatorname{NDCG}$指标的计算偏离预期。可以通过$\operatorname {Sinkhorn Scaling}$把$\hat P$进行行列归一化，确保所有文档对排名的贡献为$1$​。具体步骤如下：
+
+**输入：**
+
+- 近似的置换矩阵$\hat P \in \mathbb{R}^{n \times n}$。
+- 最大迭代次数 `max_iter`。
+- 收敛阈值 $\epsilon$（如 $10^{-6}$）。
+
+**输出：**
+
+- 双随机矩阵 $S$，即行和与列和均约为1。
+
+---
+
+**算法步骤：**
+
+1. **初始化：**
+    - 设置 $S := \hat P$
+
+2. **迭代归一化：**
+  
+    - 对于 $k = 1$ 到 `max_iter`：
+    
+        a. **行归一化：**
+        - 对于每一行 $i$：
+            - 计算行和 $r_i = \sum_{j=1}^n S_{i,j}$
+            - 更新行 $i$：$S_{i,:} = S_{i,:} / r_i$
+        
+        b. **列归一化：**
+        - 对于每一列 $j$：
+            - 计算列和 $c_j = \sum_{i=1}^n S_{i,j}$
+            - 更新列 $j$：$S_{:,j} = S_{:,j} / c_j$
+        
+        c. **检查收敛：**
+        - 计算所有行和 $\mathbf{r} = \sum_j S_{i,j}$，列和 $\mathbf{c} = \sum_i S_{i,j}$。
+        - 如果
+        $$
+        \max\bigl(\lvert \mathbf{r} - \mathbf{1} \rvert \cup \lvert \mathbf{c} - \mathbf{1} \rvert\bigr) < \epsilon
+        $$
+        则停止迭代。
+    
+3. **输出：**
+    
+    - 返回归一化后的置换矩阵 $S$​​。
+    
+
+​	故改进后的$\operatorname{NeuralNDCG}@k(\tau)(\mathbf {s,r})$公式为：
+$$
+\begin{aligned} \operatorname{NeuralNDCG}@k(\tau)(\mathbf {s,r})=\frac{\sum_{i=1}^{k}\big(S g(\mathbf r)\big)_id(i)}{\operatorname{IDCG@}k}\end{aligned}
+$$
+​	
+
+> [!NOTE]
+>
+> Sinkhorn Scaling 是一个需要多步（多次行归一化 + 列归一化）迭代的过程，每次操作都会在计算图里生成额外的节点，都会被自动微分库（如 PyTorch、TensorFlow）记录下来。因此会增加反向传播的计算量，不过实际过程中迭代步数比较少，且Sinkhorn Scaling只涉及简单的行列归一化，因此计算开销可以接受。
+
 
 
 # 3.Ranking skills in Direct Preference Optimization
