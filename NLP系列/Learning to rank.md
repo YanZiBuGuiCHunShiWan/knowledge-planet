@@ -52,7 +52,7 @@ $$
 
 ### 2.2.2 RankNet& lambda Rank
 
-​	RankNet 的核心思想是使用 **成对比较（pairwise approach）** 来学习一个排序函数，该函数可以根据文档对$(doc_i,doc_j)$的相关性预测它们相对于查询$q$的排序顺序。RankNet 的损失函数可以表示为：	
+​	RankNet 的核心思想是使用 **成对比较（pairwise approach）** 来学习一个排序函数，该函数可以根据文档对$(doc_i,doc_j)$的相关性预测它们相对于查询$q$的排序顺序。RankNet 的损失函数可以表示为[[x]]()：	
 $$
 \begin{align}
             C=\frac{1}{2}\left(1-S_{i j}\right) \sigma\left(s_{i}-s_{j}\right)+\log \left(1+e^{-\sigma\left(s_{i}-s_{j}\right)}\right)
@@ -103,6 +103,17 @@ $$
 $$
 \lambda_{ij}\equiv\sigma\bigg(\frac{1}{2}\left(1-S_{i j}\right) -\frac{1}{1+e^{\sigma\left(s_{i}-s_{j}\right)}}\bigg)
 $$
+> [!NOTE]
+>
+> 令$\lambda_{ij}$代表$i$的关系一定比$j$在前，所以有$S_{ij}=1$，故：
+> $$
+> \begin{aligned}\lambda_{ij}&=-\frac{\sigma}{1+e^{\sigma\left(s_{i}-s_{j}\right)}}\\
+> \lambda_{ji}&=-\frac{\sigma}{1+e^{\sigma\left(s_{j}-s_{i}\right)}}\\
+> 
+> &=-\frac{\sigma e^{\sigma\left(s_{i}-s_{j}\right)}}{1+e^{\sigma\left(s_{i}-s_{j}\right)}}\\
+> &=-\sigma(1-\lambda_{ij})\end{aligned}
+> $$
+
 ​	这样损失函数对单个参数分量的梯度公式就变得清爽了：
 $$
 \begin{aligned} \frac{\partial C(s_i,s_j)}{\partial w_k}&= \lambda_{ij}(\frac{\partial s_i}{\partial w_k}-\frac{\partial s_j}{\partial w_k})\end{aligned}
@@ -111,13 +122,26 @@ $$
 $$
 \delta w_k=-\eta\sum_{\{i,j\}\in I}\lambda_{ij}(\frac{\partial s_i}{\partial w_k}-\frac{\partial s_j}{\partial w_k})
 $$
-​	现在，这个公式可以写成更加统一的形式，
+​	现在，这个公式可以写成更加统一的形式：
+$$
+\begin{aligned}\delta w_k&=-\eta \sum_i\lambda_i(\frac{\partial s_i}{\partial w_k})\\
+\lambda_i&=\sum_{j:\{i,j\}\in I}\lambda_{ij}-\sum_{j:\{j,i\}\in I}\lambda_{ji}\end{aligned}
+$$
+​	意思是对于某个文档$doc_i$，先找到相关性不如它的那些文档$doc_j$，此时可以算出一个向上的叠加的推力即$\begin{aligned}\sum_{j:\{i,j\}\in I}\lambda_{ij}\end{aligned}$，同时也会有其他相关性比$doc_i$高的文档，此时$doc_i$上会有一个向下的叠加的拉力即$\begin{aligned}-\sum_{j:\{j,i\}\in I}\lambda_{ji}\end{aligned}$。更直观一点，给定$5$个文档，假定关系如下：
 
+![image-20250703105259182](E:\Study\gitpro\knowledge-planet\NLP系列\assets\image-20250703105259182.png)
 
+​	那么针对每一个文档$doc_i$，需要计算的$\lambda_{ij}$、$\lambda_{ji}$与$\frac{\partial s_i}{\partial w_k}$如下表：
 
+|  文档   |              $\lambda_{ij}$              |              $\lambda_{ji}$              | $\frac{\partial s_i}{\partial w_k}$ |
+| :-----: | :--------------------------------------: | :--------------------------------------: | :---------------------------------: |
+| $doc_1$ | $\lambda_{12},\lambda{13},\lambda_{14}$  |              $\lambda_{51}$              | $\frac{\partial s_1}{\partial w_k}$ |
+| $doc_2$ |       $\lambda_{23},\lambda_{24}$        |              $\lambda_{52}$              | $\frac{\partial s_2}{\partial w_k}$ |
+| $doc_3$ |              $\lambda_{34}$              |              $\lambda_{53}$              | $\frac{\partial s_3}{\partial w_k}$ |
+| $doc_4$ |              $\lambda_{45}$              | $\lambda_{14},\lambda_{24},\lambda_{34}$ | $\frac{\partial s_4}{\partial w_k}$ |
+| $doc_5$ | $\lambda_{51},\lambda_{52},\lambda_{53}$ |              $\lambda_{45}$              | $\frac{\partial s_5}{\partial w_k}$ |
 
-
-
+​	因此，可以让RankNet的训练方式发生质的改变，即对于一个查询所有的文档，算出他们两两之间的$\lambda_{ij}$，根据公式算出累加梯度$\lambda_i$，所有$\lambda_i$计算完后再根据公式进行梯度更新，显著加速训练速度，这个为加速而生的$\lambda$梯度，启发了研究者们：我们是不是可以绕开复杂的损失函数，直接去定义和优化梯度呢？
 
 ​	xxxx
 
@@ -582,7 +606,7 @@ $$
         则停止迭代。
     
 3. **输出：**
-    
+  
     - 返回归一化后的置换矩阵 $S$​​。
     
 
@@ -626,7 +650,7 @@ $$
 
 [[4]]()
 
-[[5]]()
+[[5]J.C.Burges.From RankNet to LambdaRank to LambdaMart:An Overview[EB/OL].Microsoft Research Technical Report MSR-TR-2010-82.](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/MSR-TR-2010-82.pdf)
 
 [[6]Grover,Wang,Zweig,et al.Stochastic Optimization of Sorting Networks via Continuous Relexations[J].International Conference on Learning Representations,2019.](https://arxiv.org/abs/1903.08850)
 
