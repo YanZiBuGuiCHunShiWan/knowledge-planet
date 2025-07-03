@@ -46,11 +46,7 @@ $$
 
 ##2.2 Pair-Wise
 
-### 2.2.1 RankSVM
-
-​	RankSVM 是Pair-Wise方法中最经典、最具代表性的方法之一，它将排序问题转化为一个类似成对比较的二分类问题，并借助支持向量机（SVM）的思想进行求解。本文将详细介绍 RankSVM 的思想、数学推导，并解释如何求解该优化问题。
-
-### 2.2.2 RankNet& lambda Rank
+### 2.2.1 RankNet& lambda Rank
 
 ​	RankNet 的核心思想是使用 **成对比较（pairwise approach）** 来学习一个排序函数，该函数可以根据文档对$(doc_i,doc_j)$的相关性预测它们相对于查询$q$的排序顺序。RankNet 的损失函数可以表示为[[x]]()：	
 $$
@@ -95,9 +91,9 @@ $$
 $$
 \begin{aligned}w_k\to w_k-\eta\:\frac{\partial C}{\partial w_k}=w_k-\eta\left(\frac{\partial C}{\partial s_i}\frac{\partial s_i}{\partial w_k}+\frac{\partial C}{\partial s_j}\frac{\partial s_j}{\partial w_k}\right)\end{aligned}
 $$
-​	损失函数的变化为：
+​	损失函数的变化近似为：
 $$
-\delta C=\sum_{k}\frac{\partial C}{\partial w_{k}}\delta w_{k}=\sum_{k}\frac{\partial C}{\partial w_{k}}\left(-\eta\frac{\partial C}{\partial w_{k}}\right)=-\eta\sum_{k}\left(\frac{\partial C}{\partial w_{k}}\right)^{2}<0
+\delta C\approx\sum_{k}\frac{\partial C}{\partial w_{k}}\delta w_{k}=\sum_{k}\frac{\partial C}{\partial w_{k}}\left(-\eta\frac{\partial C}{\partial w_{k}}\right)=-\eta\sum_{k}\left(\frac{\partial C}{\partial w_{k}}\right)^{2}<0
 $$
 ​	即梯度下降一定沿着损失函数减小的方向更新。每次更新都会让损失值降低。然而，初版的RankNet训练效率低下——每次处理一对文档就要更新一次模型，如一个查询有$100$个候选文档，那么两两配对比较就需要$\begin{pmatrix} 100 \\ 2\end{pmatrix}$个文档对，这样的计算开销过大。我们回顾上述公式$xxxx$，可以将左边一部分复杂的公式定义：
 $$
@@ -105,7 +101,7 @@ $$
 $$
 > [!NOTE]
 >
-> 令$\lambda_{ij}$代表$i$的关系一定比$j$在前，所以有$S_{ij}=1$，故：
+> $\lambda_{ij}$代表$i$的关系一定比$j$在前，所以有$S_{ij}=1$，故：
 > $$
 > \begin{aligned}\lambda_{ij}&=-\frac{\sigma}{1+e^{\sigma\left(s_{i}-s_{j}\right)}}\\
 > \lambda_{ji}&=-\frac{\sigma}{1+e^{\sigma\left(s_{j}-s_{i}\right)}}\\
@@ -141,11 +137,23 @@ $$
 | $doc_4$ |              $\lambda_{45}$              | $\lambda_{14},\lambda_{24},\lambda_{34}$ | $\frac{\partial s_4}{\partial w_k}$ |
 | $doc_5$ | $\lambda_{51},\lambda_{52},\lambda_{53}$ |              $\lambda_{45}$              | $\frac{\partial s_5}{\partial w_k}$ |
 
-​	因此，可以让RankNet的训练方式发生质的改变，即对于一个查询所有的文档，算出他们两两之间的$\lambda_{ij}$，根据公式算出累加梯度$\lambda_i$，所有$\lambda_i$计算完后再根据公式进行梯度更新，显著加速训练速度，这个为加速而生的$\lambda$梯度，启发了研究者们：我们是不是可以绕开复杂的损失函数，直接去定义和优化梯度呢？
+​	因此，对于一个查询所有的文档，算出他们两两之间的$\lambda_{ij}$，根据公式算出累加梯度$\lambda_i$，所有$\lambda_i$计算完后再根据公式进行梯度更新，显著加速训练速度。即原始的训练方式是遍历所有的文档对$\begin{pmatrix} 100 \\ 2\end{pmatrix}$算$O(n^2)$次计算（计算开销小），每次遍历就执行一次梯度更新（计算开销大），有$n^2$次廉价计算加$n^2$次昂贵计算。而改进后有先遍历所有文档对算出$\lambda_i$$O(n^2)$次计算（计算开销小），再执行$n$次梯度更新，为$n$次昂贵计算，因此将计算复杂度降低至了线性，显著降低计算开销，而这个为加速而生的$\lambda$梯度，启发了研究者们：我们是不是可以绕开复杂的损失函数，直接去定义和优化梯度呢？
 
-​	xxxx
+​	答案是——可以的，那为什么要直接定义梯度？因为RankNet的优化目标只是成对损失函数，而衡量排序好坏的指标如$\operatorname{NDCG},\operatorname {MRR}$并不是简单的成对损失，因此优化成对损失并不能保证训练后的模型在这些衡量指标上的效果就一定更好。那能否直接优化这些指标呢？——答案是可以，不过很麻烦，因为这些指标的计算涉及到排序算子，排序是一个不可导的操作，没法计算损失函数的梯度并反向传播，需要找到一些可导近似函数进行优化。因此LambdaRank提出不显示定义损失函数而是直接定义梯度来训练神经网络，$\mathrm{LambdaRank}$在$\mathrm{RankNet}$的基础上对$\lambda_{ij}$进行了改造，直接定义梯度为：
+$$
+\lambda_{i j}=\frac{\partial C(s_i-s_j)}{\partial s_i}=-\frac{\sigma}{1+e^{\sigma\left(s_{i}-s_{j}\right)}} \cdot|\Delta \mathrm{NDCG}|
+$$
+​	其中，$|\Delta \mathrm{NDCG}|$是交换$i$与$j$排名后$\mathrm{NDCG}$发生的变化，此时我们不再是让损失最小，而是要让向上的推力越大，使得模型预测的$\mathrm{NDCG}$越大越好，因此更新参数时是梯度上升：
+$$
+\begin{aligned} w_k\leftarrow w_k+\eta\frac{\partial C}{\partial w_k}\end{aligned}
+$$
+​	我们把$C$看作一个隐式收益，此时$C$的变化量近似为：
+$$
+\delta C\approx\frac{\partial C}{\partial w_k}\delta w_k=\eta\big(\frac{\partial C}{\partial w_k}\big)^2\gt 0
+$$
+​	因此能说明这个隐式的收益说可以不断变大的。$\mathrm{LmabdaRank}$除了可以优化$\mathrm{NDCG}$指标，还能拓展到其他的指标如$\mathrm{MAP},\mathrm{MRR}$等。只要将$|\Delta \mathrm{NDCG}|$替换成对应的$\mathrm{IR}$指标即可。
 
-### 2.2.4 Other Strategy
+### 2.2.2 Other Strategy
 
 
 
@@ -169,7 +177,7 @@ $$
 |              $\operatorname{sort}$               |          $\operatorname{Sinkhorn Operator}$           |
 |            $\operatorname{sampling}$             |            $\operatorname{Gumbel-softmax}$            |
 
-​	以表格中的$\max$不可导算子为例，$\operatorname{max}$ 算子的作用是从一个向量中获得最大值，如$v=(2,3,4,1,4,5)^{\top}$的最大值是$5$，则$\max v=5$，其近似如下：
+​	以表格中的$\max$不可导算子为例，$\operatorname{max}$ 算子的作用是从一个向量中获得最大值，如$\mathbf v=(2,3,4,1,4,5)^{\top}$的最大值是$5$，则$\max \mathbf v=5$，其近似如下：
 $$
 \max(x_1,x_2,...,x_n)\approx\lim_{K\rightarrow \infin}\frac{1}{K}\log\sum_{i=1}^{n}\exp(Kx_i)
 $$
@@ -210,7 +218,7 @@ $$
 $$
 P(r_j=k)=\sum_{\substack{E\subseteq\{1,2,...,N\} \setminus \{j\}\\|E|=K}}^{}\big(\prod_{e\in E}\pi_{ej}\prod_{i=1,i\neq j，i\neq e}^{N}(1-\pi_{ij})\big)
 $$
-​	该概率质量函数虽然是解析式，但计算时需遍历子集，属于“非封闭形式”（因涉及到组合爆炸）。通常我们需要迭代进行求解，现在来思考一下不同视角下的$P(r_j=k)$的表达方式，从一开始，假设只有一个文档$doc_j$，那么第一次排序其排在位置$0$的概率必然是1，现在有第二个文档$doc_i,i\neq j$进来，我们需要确认文档$doc_j$排在$0$还是$1$，这种情况下如果$doc_j$仍然排在$0$的概率是$1-\pi_{ij}$，排在$1$的概率是从$0$位置跌落一名$\pi_{ij}$。假设有第三篇文档进来，则文档$doc_j$的位置排名只可能出现排序不变及往下跌落一位的情况，不可能上升，如果我们将文档$doc_j$的排序位置视作一个状态，则这个状态只与前一个状态有关，且只可能保持不变或者由前一个状态转移到下一个相邻的状态（第3个时刻的位置3只能转移到第四个时刻的位置3或者位置4，不可能转移到位置2或位置5），整体情况如下图所示：
+​	该概率质量函数虽然是解析式，但计算时需遍历子集，属于“非封闭形式”（因涉及到组合爆炸）。通常我们需要迭代进行求解，现在来思考一下不同视角下的$P(r_j=k)$的表达方式，从一开始，假设只有一个文档$doc_j$，那么第一次排序其排在位置$0$的概率必然是1，现在有第二个文档$doc_i,i\neq j$进来，我们需要确认文档$doc_j$排在$0$还是$1$，这种情况下如果$doc_j$仍然排在$0$的概率是$1-\pi_{ij}$，排在$1$的概率是从$0$位置跌落一名$\pi_{ij}$。假设有第三篇文档进来，则文档$doc_j$的位置排名只可能出现排序不变及往下跌落一位的情况，不可能上升，如果我们将文档$doc_j$的排序位置视作一个状态，则这个状态只与前一个状态有关，且只可能保持不变或者由前一个状态转移到下一个相邻的状态（第$3$个时刻的位置$3$只能转移到第四个时刻的位置$3$或者位置$4$，不可能转移到位置$2$或位置$5$），整体情况如下图所示：
 
 ![image-20250326165450215](assets\learning2rank\position-transition.png)
 
