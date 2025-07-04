@@ -1,42 +1,8 @@
 # Learning to Rank
 
-​	
-
-​	
-
-# 1.Recall
-
-## 1.1 Sentence BERT
-
-![image-20250701150319806](E:\Study\gitpro\knowledge-planet\NLP系列\assets\image-20250701150319806.png)
-
-##1.2 SimCSE
-
-​	SimCSE通过对比学习的方式学习句向量的语义表征，仅用简单的Dropout技术就显著提升了句子嵌入的质量，在多个语义相似度任务上刷新了SOTA。SimCSE的核心思想是**让相似的句子在向量空间中靠近，不相似的远离**，创新点在于构造正负样本的方式，其可分为无监督和有监督两个版本，具体原理如下图：
-
-![image-20250701150217824](E:\Study\gitpro\knowledge-planet\NLP系列\assets\image-20250701150217824.png)
-
-### 1.2.1 无监督
-
-
-
-### 1.2.2 有监督
-
-​	有监督SimCSE利用自然语言推理（NLI）数据集，**正样本**：蕴涵（entailment）关系的句子对。**负样本**：矛盾（contradiction）关系的句子对。通过构造负样本，在一个Batch内让模型区分更多的句子对显著提示模型学习的语义表征质量。这个思想可以拓展到不同类型的下游任务而不仅仅是NLI数据集，一个典型的场景是文档检索场景，我们可以为查询$query$召回多个语义相似的候选文档作为负样本，具体地，我们可以将一个查询，查询对应的真实文档，相关文档三者作为一个样本对$(query,doc^+,doc_j^-)$。多个这样的样本对组成一个Batch作为神经网络输入，通过对比损失提升模型在下游任务上的性能，具体原理如下图：
-
-![image-20250701153752592](E:\Study\gitpro\knowledge-planet\NLP系列\assets\image-20250701153752592.png)
-
-​	首先是有监督无负样本，此时查询，查询对应的真实文档$(query_i,doc_i^+)$作为一个样本对，$N$个这样的样本对构成一个Batch,因此一个Batch有$2N个$输入，神经网络输出$2N$个对应的语义向量，这$2N$个语义向量先两两计算预先相似度得到一个相似度方阵$\mathbf S$，其中$\mathbf S_{ij}=\operatorname{Sim}(\mathbf h_i,\mathbf h_j)$，SimCSE的思想是，只比较$query_i$和其他的$doc_j^+$之间的语义相似度，不比较$query_i$和$query_j$的语义相似度，因此在方阵$\mathbf S$中只取第奇数行，第偶数列。因为第$2,4,\ldots,2n$行都是$doc_j^+$和其他比，我们不需要这部分比较的信息，其已经蕴含在$query_i$和其他比的信息中了。而第奇数列都是$query_i$和$query_j$比，因此这部分信息我们也不需要。于是我们只在第偶数行上算交叉熵损失便等价于对比损失。同样的，是一个负样本的有监督SimCSE，那么当是第$(2k),(2k+1),k=1,...,n$行不需要考虑，第$3k-2,k=1,..,n$列不需要考虑，在此基础上采用交叉熵损失等价于对比损失。此外，论文引入了温度系数$\tau$来控制负样本带来的影响，即$\operatorname{softmax with temperature}$，温度系数越大，则受负样本的影响越小，温度系数越小，则更容易受到影响，具体分析如下[[x]]()：记模型为$\mathbf E(\cdot)$，当前查询为$query_i$，对应的正样本为$doc_i^+$，负样本为$doc_{i}^-$，有$\mathbf E(query_i)=\mathbf h_i,\mathbf E(doc_i^+)=\mathbf h_i^+,\mathbf E(doc_i^-)=\mathbf h_i^-$。
-$$
-\begin{aligned}\lim_{\tau\rightarrow0^+}\frac{\exp(\operatorname{Sim}(\mathbf h_i,\mathbf h_j^+)/\tau)}{\sum_{k=1}^{n}\exp(\operatorname{Sim}(\mathbf h_i,\mathbf h_k^+)/\tau)+\exp(\operatorname{Sim}(\mathbf h_i,\mathbf h_k^-)/\tau)}\end{aligned}
-$$
-
-
-# 2.Ranking
-
 ​	在信息检索（IR）和推荐系统领域，排序（Ranking）问题始终是核心任务之一。从搜索引擎返回的网页列表，到电商平台为用户推荐的商品，排序算法无处不在。为了更智能、更个性化地进行排序，**Learning to Rank（L2R，学习排序）** 应运而生。Learning to Rank 的起源可以追溯到 2000 年代初期，随着机器学习在自然语言处理和信息检索中的广泛应用，人们逐渐意识到传统的基于规则或启发式的排序方法难以应对复杂的用户需求。2005 年，微软亚洲研究院发表了著名的 RankNet（基于神经网络的排序学习模型），随后又推出 LambdaRank 和 LambdaMART，这些工作开启了用监督学习方法直接优化排序的新时代。排序方法整体可分为Point-Wise,Pair-Wise,List-Wise三种，本文接下来讲按照顺序介绍这三种方法的思想与具体细节。
 
-## 2.1 Point-Wise
+# 1.Point-Wise
 
 ​	Point-Wise Ranking 是学习排序的一类方法，它把排序任务视为 **回归或分类问题**。因此通常采样$\text{BCE Loss}$或者$\text{Focal Loss}$作为策略，以文档排序的场景为例，我们用BERT作为Cross Encoder捕获查询和文档间细粒度的语义交互，给定一个查询$query_i$、相关的文档$doc_i^+$（这里笔者假定只有一个相关文档，实际上可以有多个）和对应的$m$个候选文档$doc_{ij}^-,j=1,\ldots,m$，将$query_i$和对应的文档通过特殊符号$\text{[CLS][SEP]}$拼接后作为BERT的输入，由可训练的线性层$\mathbf W$映射后再经过$\operatorname{sigmoid}$函数得到对应的分数$s_i$，对于正样本的得分$s_i$，应该越接近$1$越好，对于负样本得分$s_j$，应该越接近$0$越好。如下图：
 
@@ -44,11 +10,11 @@ $$
 
 ​	Point-Wise 把排序问题当作 **独立的回归或分类任务** 来做，预测每个样本的分值或概率。但排序真正关心的是 **文档之间的相对顺序**（比如NDCG、MAP、MRR 等），Point-Wise 并没有直接针对这些指标优化，因此即便模型预测的分值接近真实分值，也可能导致最终的排序顺序完全错误。此外，Point-Wise损失函数通常不能反映“局部排序错误”的严重程度，如把排名第$1$的文档得分预测稍低一些，导致其拍到了后几位，损失函数依然非常小，但是上线后用户体验和位置有关的衡量指标都很差。如果训练集中有大量负样本，模型可能只学会输出低分来降低损失，即便是类别加权的损失也难以将模型改进到正常水平。
 
-##2.2 Pair-Wise
+# 2.Pair-Wise
 
-### 2.2.1 RankNet& lambda Rank
+## 2.1 RankNet& lambda Rank
 
-​	RankNet 的核心思想是使用 **成对比较（pairwise approach）** 来学习一个排序函数，该函数可以根据文档对$(doc_i,doc_j)$的相关性预测它们相对于查询$q$的排序顺序。RankNet 的损失函数可以表示为[[x]]()：	
+​	$\mathrm{RankNet}$ 的核心思想是使用 **成对比较（pairwise approach）** 来学习一个排序函数，该函数可以根据文档对$(doc_i,doc_j)$的相关性预测它们相对于查询$q$的排序顺序。$\mathrm{RankNet}$ 的损失函数可以表示为[[x]]()：	
 $$
 \begin{align}
             C=\frac{1}{2}\left(1-S_{i j}\right) \sigma\left(s_{i}-s_{j}\right)+\log \left(1+e^{-\sigma\left(s_{i}-s_{j}\right)}\right)
@@ -95,7 +61,7 @@ $$
 $$
 \delta C\approx\sum_{k}\frac{\partial C}{\partial w_{k}}\delta w_{k}=\sum_{k}\frac{\partial C}{\partial w_{k}}\left(-\eta\frac{\partial C}{\partial w_{k}}\right)=-\eta\sum_{k}\left(\frac{\partial C}{\partial w_{k}}\right)^{2}<0
 $$
-​	即梯度下降一定沿着损失函数减小的方向更新。每次更新都会让损失值降低。然而，初版的RankNet训练效率低下——每次处理一对文档就要更新一次模型，如一个查询有$100$个候选文档，那么两两配对比较就需要$\begin{pmatrix} 100 \\ 2\end{pmatrix}$个文档对，这样的计算开销过大。我们回顾上述公式$xxxx$，可以将左边一部分复杂的公式定义：
+​	即梯度下降一定沿着损失函数减小的方向更新。每次更新都会让损失值降低。然而，初版的$\mathrm{RankNet}$训练效率低下——每次处理一对文档就要更新一次模型，如一个查询有$100$个候选文档，那么两两配对比较就需要$\begin{pmatrix} 100 \\ 2\end{pmatrix}$个文档对，这样的计算开销过大。我们回顾上述公式$xxxx$，可以将左边一部分复杂的公式定义：
 $$
 \lambda_{ij}\equiv\sigma\bigg(\frac{1}{2}\left(1-S_{i j}\right) -\frac{1}{1+e^{\sigma\left(s_{i}-s_{j}\right)}}\bigg)
 $$
@@ -131,7 +97,7 @@ $$
 
 |  文档   |              $\lambda_{ij}$              |              $\lambda_{ji}$              | $\frac{\partial s_i}{\partial w_k}$ |
 | :-----: | :--------------------------------------: | :--------------------------------------: | :---------------------------------: |
-| $doc_1$ | $\lambda_{12},\lambda{13},\lambda_{14}$  |              $\lambda_{51}$              | $\frac{\partial s_1}{\partial w_k}$ |
+| $doc_1$ | $\lambda_{12},\lambda_{13},\lambda_{14}$ |              $\lambda_{51}$              | $\frac{\partial s_1}{\partial w_k}$ |
 | $doc_2$ |       $\lambda_{23},\lambda_{24}$        |              $\lambda_{52}$              | $\frac{\partial s_2}{\partial w_k}$ |
 | $doc_3$ |              $\lambda_{34}$              |              $\lambda_{53}$              | $\frac{\partial s_3}{\partial w_k}$ |
 | $doc_4$ |              $\lambda_{45}$              | $\lambda_{14},\lambda_{24},\lambda_{34}$ | $\frac{\partial s_4}{\partial w_k}$ |
@@ -139,13 +105,13 @@ $$
 
 ​	因此，对于一个查询所有的文档，算出他们两两之间的$\lambda_{ij}$，根据公式算出累加梯度$\lambda_i$，所有$\lambda_i$计算完后再根据公式进行梯度更新，显著加速训练速度。即原始的训练方式是遍历所有的文档对$\begin{pmatrix} 100 \\ 2\end{pmatrix}$算$O(n^2)$次计算（计算开销小），每次遍历就执行一次梯度更新（计算开销大），有$n^2$次廉价计算加$n^2$次昂贵计算。而改进后有先遍历所有文档对算出$\lambda_i$$O(n^2)$次计算（计算开销小），再执行$n$次梯度更新，为$n$次昂贵计算，因此将计算复杂度降低至了线性，显著降低计算开销，而这个为加速而生的$\lambda$梯度，启发了研究者们：我们是不是可以绕开复杂的损失函数，直接去定义和优化梯度呢？
 
-​	答案是——可以的，那为什么要直接定义梯度？因为RankNet的优化目标只是成对损失函数，而衡量排序好坏的指标如$\operatorname{NDCG},\operatorname {MRR}$并不是简单的成对损失，因此优化成对损失并不能保证训练后的模型在这些衡量指标上的效果就一定更好。那能否直接优化这些指标呢？——答案是可以，不过很麻烦，因为这些指标的计算涉及到排序算子，排序是一个不可导的操作，没法计算损失函数的梯度并反向传播，需要找到一些可导近似函数进行优化。因此LambdaRank提出不显示定义损失函数而是直接定义梯度来训练神经网络，$\mathrm{LambdaRank}$在$\mathrm{RankNet}$的基础上对$\lambda_{ij}$进行了改造，直接定义梯度为：
+​	答案是——可以的，那为什么要直接定义梯度？因为$\mathrm{RankNet}$的优化目标只是成对损失函数，而衡量排序好坏的指标如$\operatorname{NDCG},\operatorname {MRR}$并不是简单的成对损失，因此优化成对损失并不能保证训练后的模型在这些衡量指标上的效果就一定更好。那能否直接优化这些指标呢？——答案是可以，不过很麻烦，因为这些指标的计算涉及到排序算子，排序是一个不可导的操作，没法计算损失函数的梯度并反向传播，需要找到一些可导近似函数进行优化。因此$\mathrm{LambdaRank}$提出不显示定义损失函数而是直接定义梯度来训练神经网络，$\mathrm{LambdaRank}$在$\mathrm{RankNet}$的基础上对$\lambda_{ij}$进行了改造，直接定义梯度为：
 $$
 \lambda_{i j}=\frac{\partial C(s_i-s_j)}{\partial s_i}=-\frac{\sigma}{1+e^{\sigma\left(s_{i}-s_{j}\right)}} \cdot|\Delta \mathrm{NDCG}|
 $$
 ​	其中，$|\Delta \mathrm{NDCG}|$是交换$i$与$j$排名后$\mathrm{NDCG}$发生的变化，此时我们不再是让损失最小，而是要让向上的推力越大，使得模型预测的$\mathrm{NDCG}$越大越好，因此更新参数时是梯度上升：
 $$
-\begin{aligned} w_k\leftarrow w_k+\eta\frac{\partial C}{\partial w_k}\end{aligned}
+\begin{aligned} w_k\leftarrow w_k+\eta\frac{\partial C}{\partial w_k}=w_k+\eta\sum_i\lambda_i\frac{\partial s_i}{\partial w_k}\end{aligned}
 $$
 ​	我们把$C$看作一个隐式收益，此时$C$的变化量近似为：
 $$
@@ -153,17 +119,11 @@ $$
 $$
 ​	因此能说明这个隐式的收益说可以不断变大的。$\mathrm{LmabdaRank}$除了可以优化$\mathrm{NDCG}$指标，还能拓展到其他的指标如$\mathrm{MAP},\mathrm{MRR}$等。只要将$|\Delta \mathrm{NDCG}|$替换成对应的$\mathrm{IR}$指标即可。
 
-### 2.2.2 Other Strategy
-
-
-
-
-
-##2.3 List-Wise
+# 3.List-Wise
 
 ​	listwise方法可以分为两类，位置有关的指标优化与位置无关的指标优化[x]。和位置有关的衡量指标有$MRR$,$MAP$,$NDCG$等，而模型参数关于这些衡量指标不可导，我们通常采用函数近似的方式构造一个可导函数作为优化目标，从而实现模型参数的更新。首先，我们需要明确的是，什么衡量指标/算子是不可导的？
 
-### 2.3.1 不可导算子的可导近似
+## 3.1不可导算子的可导近似
 
 ​	学高等数学的时候我们知道导数是指函数描述的是函数在某一处的变化率，可导描述的就是指导数在某一处的变化率是否存在，常见的可到操作有：加减乘除、平方、对数、指数、线性变化、切片等。而不可导就是指函数在某些点处的导数不存在，或者不具备可微性，常见的不可导操作有：阶跃函数、$\arg\max$​、$\max$、指示函数、排序、采样。
 
@@ -183,7 +143,7 @@ $$
 $$
 ​	$K$越大则近似越好，当$K$取$1$时则$\max$算子的近似就是$\operatorname{log sum exp}$​。$\operatorname{sort}$算子和采样算子笔者将会在接下来的章节详细介绍。
 
-### 2.3.2 SoftRank
+## 3.2 SoftRank
 
 ​	SoftRank的思想是过文档的得分和排名进行概率建模，实现了对NDCG等指标的可微近似，从而使得梯度下降等优化方法得以应用。$NDCG$指标计算依赖于$DCG$和$IDCG$，但是$DCG$这个指标中涉及到了$\mathrm {sort}$的操作是不可导算子，因此训练时没法直接反向传播，如果将$DCG$和$IDCG$有一个平滑点的可导函数近似，那$NDCG$自然也就可导了。
 
@@ -205,12 +165,12 @@ $$
 $$
 P(X=k)=\begin{pmatrix} n \\ k\end{pmatrix}p^k(1-p)^{n-k}
 $$
-​	现在，文档$doc_j$的位置可以看成一个随机变量的期望，将$DCG$指标中的$D(r_j)$用$\mathbb E\big[D(r_j)\big]$替代，则我们可以得到一个可导的计算指标$\operatorname{SoftNDCG}$，即：
+​	现在，文档$doc_j$的位置可以看成一个随机变量的期望，将$\mathrm{DCG}$指标中的$D(r_j)$用$\mathbb E\big[D(r_j)\big]$替代，则我们可以得到一个可导的计算指标$\operatorname{SoftNDCG}$，即：
 $$
 \begin{aligned}DCG&=\sum_{i=1}^{N}g(j)D(r_j)\\
 &\approx \sum_{i=1}^{N}g(j)\sum_{r=0}^{N-1}D(r_j)P(r_j=r)\end{aligned}
 $$
-​	只要知道$P(r_j=k)$就能计算$DCG$，文档$j$的排序位置$r_j$的取值可能为$0,...,N-1$，但是我们会发现情况有点复杂，即$P(r_j=k)$的解析式表达起来很繁琐，当$r_j$取值为$0$时虽然有$P(r_j=0)=\prod_{i=1,i\neq j}^N(1-\pi_{ij})$，但是当$r_j=1$时可能是$N-1$种情况，即:
+​	只要知道$P(r_j=k)$就能计算$\mathrm{DCG}$，文档$j$的排序位置$r_j$的取值可能为$0,...,N-1$，但是我们会发现情况有点复杂，即$P(r_j=k)$的解析式表达起来很繁琐，当$r_j$取值为$0$时虽然有$P(r_j=0)=\prod_{i=1,i\neq j}^N(1-\pi_{ij})$，但是当$r_j=1$时可能是$N-1$种情况，即:
 $$
 P(r_j=1)=\sum_{k=1,k\neq j}^{N}\big(\pi_{kj}\prod_{i=1,i\neq j，i\neq k}^{N}(1-\pi_{ij})\big)
 $$
@@ -218,7 +178,7 @@ $$
 $$
 P(r_j=k)=\sum_{\substack{E\subseteq\{1,2,...,N\} \setminus \{j\}\\|E|=K}}^{}\big(\prod_{e\in E}\pi_{ej}\prod_{i=1,i\neq j，i\neq e}^{N}(1-\pi_{ij})\big)
 $$
-​	该概率质量函数虽然是解析式，但计算时需遍历子集，属于“非封闭形式”（因涉及到组合爆炸）。通常我们需要迭代进行求解，现在来思考一下不同视角下的$P(r_j=k)$的表达方式，从一开始，假设只有一个文档$doc_j$，那么第一次排序其排在位置$0$的概率必然是1，现在有第二个文档$doc_i,i\neq j$进来，我们需要确认文档$doc_j$排在$0$还是$1$，这种情况下如果$doc_j$仍然排在$0$的概率是$1-\pi_{ij}$，排在$1$的概率是从$0$位置跌落一名$\pi_{ij}$。假设有第三篇文档进来，则文档$doc_j$的位置排名只可能出现排序不变及往下跌落一位的情况，不可能上升，如果我们将文档$doc_j$的排序位置视作一个状态，则这个状态只与前一个状态有关，且只可能保持不变或者由前一个状态转移到下一个相邻的状态（第$3$个时刻的位置$3$只能转移到第四个时刻的位置$3$或者位置$4$，不可能转移到位置$2$或位置$5$），整体情况如下图所示：
+​	该概率质量函数虽然是解析式，但计算时需遍历子集，属于“非封闭形式”（因涉及到组合爆炸）。通常我们需要迭代进行求解，现在来思考一下不同视角下的$P(r_j=k)$的表达方式，从一开始，假设只有一个文档$doc_j$，那么第一次排序其排在位置$0$的概率必然是$1$，现在有第二个文档$doc_i,i\neq j$进来，我们需要确认文档$doc_j$排在$0$还是$1$，这种情况下如果$doc_j$仍然排在$0$的概率是$1-\pi_{ij}$，排在$1$的概率是从$0$位置跌落一名$\pi_{ij}$。假设有第三篇文档进来，则文档$doc_j$的位置排名只可能出现排序不变及往下跌落一位的情况，不可能上升，如果我们将文档$doc_j$的排序位置视作一个状态，则这个状态只与前一个状态有关，且只可能保持不变或者由前一个状态转移到下一个相邻的状态（第$3$个时刻的位置$3$只能转移到第四个时刻的位置$3$或者位置$4$，不可能转移到位置$2$或位置$5$），整体情况如下图所示：
 
 ![image-20250326165450215](assets\learning2rank\position-transition.png)
 
@@ -228,7 +188,7 @@ P_j^{(i)}(r=k)=P_j^{(i-1)}(r=k-1)\pi_{ij}+P_j^{(i-1)}(r=k)\big(1-\pi_{ij}\big)
 $$
 ​	最终计算得到$P_j^{(N)}(r=k):=P(r_j=k)$，针对所有的$j=1,...,N$,我们都会利用上述公式进行迭代计算得到一个位置分布向量$\mathbf P(r_j)=(P_j(0),P_j(1),....,P_j(N-1))^{\top}$，再基于公式x求得最终的$SoftNDCG$​​，作为损失函数进行反向传播。
 
-### 2.3.3Approximate Rank & SmoothRank
+## 3.3 Approximate Rank & SmoothRank
 
 ​	Approximate Rank认为$NDCG$指标不连续的根本原因在于排序的位置关于排序的得分是一个不可导的映射，因此将排序位置用排序分数近似是一个非常直接的想法，具体地，$DCG=\sum_{i=1}^{N}g(j)D(r_j)=\sum_{i=1}^{N}g(j)/\log(1+\pi(\mathbf x_j))$，而$\pi(\mathbf x_j)$是文档在按照模型预测的相关性分数排序后的列表中的位置，从分数到位置的这个操作是不可导的，我们可以把$\pi(\mathbf x_j)$用$s_j=f(\theta,\mathbf x_j)$进行近似：
 $$
@@ -252,7 +212,7 @@ $$
 
 ​	xxxxxxxx
 
-### 2.3.4 ListNet&ListMLE
+## 3.4 ListNet&ListMLE
 
 ​	ListNet将排序视作一个概率分布，用交叉熵损失优化排序网络。具体地，ListNet先介绍了排列概率$\text{(Permutation Probability)}$，假设$\pi$是一个关于$n$个物品的排列，$\Phi$是一个严格单调增函数，给定一个分数列表$\mathbf s$，则排列$\pi$出现对应的概率定义为：
 
@@ -305,7 +265,7 @@ $$
 
 ​	NDCG这样的评估指标反映用户会更关注排序靠前的结果，因此排序列表中若错误地排错了靠前的物品会比错误排序靠后的物品更加严重，而ListMLE则无法捕捉这样的位置信息。 
 
-### 2.3.5  Bolztman Rank
+## 3.5 Bolztman Rank
 
 ​	Bolztman Rank的思想与ListNet也类似，定义一个排序概率，考虑给定分数$\mathbf s$下目标性能度量的期望值，并将该期望作为优化指标，受统计物理学中玻尔兹曼分布的启发，给定分数列表$\mathbf S^{(f)}=\set{s_1,...,s_m}$和排序$\mathbf R=\set{r_1,...,r_m}$，Boltzman Rank先定义了一个给定$\mathbf s$下$R$出现的能量作为：
 $$
@@ -330,7 +290,7 @@ f(d_j|q,D)=\phi(d_j)+\sum_{k,k\neq j}\psi(d_j,d_k)
 $$
 ​	xxxx
 
-### 2.3.6 Neural Sort&Neural NDCG
+## 3.6 Neural Sort&Neural NDCG
 
 ​	在上述的ListWise形式的排序中，由于$NDCG$​指标的计算关于神经网络的输出是一个不可导的操作，因此不可直接优化，可以通过函数近似替代的方式或者与位置无关的损失函数来优化网络，那有没有研究是找到一个离散的排序的可导近似呢？——NeuralSort就是一种“连续松弛”，是排序操作的可导近似。
 
@@ -598,12 +558,12 @@ $$
         a. **行归一化：**
         - 对于每一行 $i$：
             - 计算行和 $r_i = \sum_{j=1}^n S_{i,j}$
-            - 更新行 $i$：$S_{i,:} = S_{i,:} / r_i$
+            - 更新行 $i$：$S_{[i,:]} = S_{[i,:]} / r_i$
         
         b. **列归一化：**
         - 对于每一列 $j$：
             - 计算列和 $c_j = \sum_{i=1}^n S_{i,j}$
-            - 更新列 $j$：$S_{:,j} = S_{:,j} / c_j$
+            - 更新列 $j$：$S_{[:,j]} = S_{[:,j]} / c_j$
         
         c. **检查收敛：**
         - 计算所有行和 $\mathbf{r} = \sum_j S_{i,j}$，列和 $\mathbf{c} = \sum_i S_{i,j}$。
@@ -626,29 +586,29 @@ $$
 
 > [!NOTE]
 >
-> Sinkhorn Scaling 是一个需要多步（多次行归一化 + 列归一化）迭代的过程，每次操作都会在计算图里生成额外的节点，都会被自动微分库（如 PyTorch、TensorFlow）记录下来。因此会增加反向传播的计算量，不过实际过程中迭代步数比较少，且Sinkhorn Scaling只涉及简单的行列归一化，因此计算开销可以接受。
+> $\operatorname {Sinkhorn Scaling}$是一个需要多步（多次行归一化 + 列归一化）迭代的过程，每次操作都会在计算图里生成额外的节点，都会被自动微分库（如 PyTorch、TensorFlow）记录下来。因此会增加反向传播的计算量，不过实际过程中迭代步数比较少，且只涉及简单的行列归一化，因此计算开销可以接受。
 
 
 
-# 3.Ranking skills in Direct Preference Optimization
+# 4.Ranking skills in Direct Preference Optimization
 
-## 3.1 Preference Feedback
+## 4.1 Preference Feedback
 
-### 3.1.1 Pair-Wise Feedback
+### 4.1.1 Pair-Wise Feedback
 
 ​	成对反馈侧重于比较成对问答的偏序关系，即$(x_i,y^{(i)}_j)$与$(x_i,y^{(i)}_k)$，从而判断回答的相对好坏。DPO在RLHF的理论框架基础上，利用成对偏好数据实现了这一范式，从而拟合了隐式奖励模型[[x]]()。
 
-### 3.1.2 List-Wise Feedback
+### 4.1.2 List-Wise Feedback
 
 ​	
 
 
 
-## 3.2 Preference Granularity
+## 4.2 Preference Granularity
 
 
 
-# 4.参考文献
+# 5.参考文献
 
 [[1]]()
 
