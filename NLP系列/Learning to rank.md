@@ -6,7 +6,7 @@
 
 ​	Point-Wise Ranking 是学习排序的一类方法，它把排序任务视为 **回归或分类问题**。因此通常采样$\text{BCE Loss}$或者$\text{Focal Loss}$作为策略，以文档排序的场景为例，我们用BERT作为Cross Encoder捕获查询和文档间细粒度的语义交互，给定一个查询$query_i$、相关的文档$doc_i^+$（这里笔者假定只有一个相关文档，实际上可以有多个）和对应的$m$个候选文档$doc_{ij}^-,j=1,\ldots,m$，将$query_i$和对应的文档通过特殊符号$\text{[CLS][SEP]}$拼接后作为BERT的输入，由可训练的线性层$\mathbf W$映射后再经过$\operatorname{sigmoid}$函数得到对应的分数$s_i$，对于正样本的得分$s_i$，应该越接近$1$越好，对于负样本得分$s_j$，应该越接近$0$越好。如下图：
 
-![image-20250701180409168](E:\Study\gitpro\knowledge-planet\NLP系列\assets\image-20250701180409168.png)
+![image-20250701180409168](assets\image-20250701180409168.png)
 
 ​	Point-Wise 把排序问题当作 **独立的回归或分类任务** 来做，预测每个样本的分值或概率。但排序真正关心的是 **文档之间的相对顺序**（比如NDCG、MAP、MRR 等），Point-Wise 并没有直接针对这些指标优化，因此即便模型预测的分值接近真实分值，也可能导致最终的排序顺序完全错误。此外，Point-Wise损失函数通常不能反映“局部排序错误”的严重程度，如把排名第$1$的文档得分预测稍低一些，导致其拍到了后几位，损失函数依然非常小，但是上线后用户体验和位置有关的衡量指标都很差。如果训练集中有大量负样本，模型可能只学会输出低分来降低损失，即便是类别加权的损失也难以将模型改进到正常水平。
 
@@ -40,7 +40,7 @@ $$
 $$
 ​	$\sigma=1$时的损失函数图像如下（自变量为$s_i-s_j$）：
 
-![image-20250702163213780](E:\Study\gitpro\knowledge-planet\NLP系列\assets\image-20250702163213780.png)
+![image-20250702163213780](assets\image-20250702163213780.png)
 
 ​	假设$s_i=\mathbf x_i^{\top}\mathbf w,s_j=\mathbf x_i^{\top}\mathbf w$，$\mathbf w\in \mathbf R^{h\times 1}$我们可以看一参数更新公式，以$w_k$（$\mathbf w$的第$k$个分量）为例：
 $$
@@ -91,7 +91,7 @@ $$
 $$
 ​	意思是对于某个文档$doc_i$，先找到相关性不如它的那些文档$doc_j$，此时可以算出一个向上的叠加的推力即$\begin{aligned}\sum_{j:\{i,j\}\in I}\lambda_{ij}\end{aligned}$，同时也会有其他相关性比$doc_i$高的文档，此时$doc_i$上会有一个向下的叠加的拉力即$\begin{aligned}-\sum_{j:\{j,i\}\in I}\lambda_{ji}\end{aligned}$。更直观一点，给定$5$个文档，假定关系如下：
 
-![image-20250703105259182](E:\Study\gitpro\knowledge-planet\NLP系列\assets\image-20250703105259182.png)
+![image-20250703105259182](assets\image-20250703105259182.png)
 
 ​	那么针对每一个文档$doc_i$，需要计算的$\lambda_{ij}$、$\lambda_{ji}$与$\frac{\partial s_i}{\partial w_k}$如下表：
 
@@ -582,8 +582,6 @@ $$
 $$
 \begin{aligned} \operatorname{NeuralNDCG}@k(\tau)(\mathbf {s,r})=\frac{\sum_{i=1}^{k}\big(S g(\mathbf r)\big)_id(i)}{\operatorname{IDCG@}k}\end{aligned}
 $$
-​	
-
 > [!NOTE]
 >
 > $\operatorname {Sinkhorn Scaling}$是一个需要多步（多次行归一化 + 列归一化）迭代的过程，每次操作都会在计算图里生成额外的节点，都会被自动微分库（如 PyTorch、TensorFlow）记录下来。因此会增加反向传播的计算量，不过实际过程中迭代步数比较少，且只涉及简单的行列归一化，因此计算开销可以接受。
@@ -592,11 +590,15 @@ $$
 
 # 4.Ranking skills in Direct Preference Optimization
 
+​	预训练——有监督微调——人类反馈强化学习是打造一个高性能大语言模型的标准步骤。在对齐阶段，目前的RLHF技术如PPO在训练时不够稳定，且对计算资源要求高，为此，DPO技术应运而生，DPO的思想是将RLHF中显示的奖励函数转化到一个统意的有监督损失中，使得模型可以通过有监督的方式微调参数，在给定偏好数据（人类专家对同一输入不同输出的优劣判断）的情况下，直接学习生成更优的输出，从而绕过传统RLHF中复杂且不稳定的策略优化过程。
+
 ## 4.1 Preference Feedback
+
+​	偏好反馈指的可以分为PointWise反馈、PairWise反馈和ListWise反馈三类。与$\text{Ranking}$问题一样，PointWise反馈独立评估每个回答的好坏，往往视作一个回归或分类问题，为其打分或标注为正面或负面；PairWise反馈通过构造成对的偏序关系比较两两之间的好坏；而ListWise反馈则考虑了整个文档内的好坏关系。
 
 ### 4.1.1 Pair-Wise Feedback
 
-​	成对反馈侧重于比较成对问答的偏序关系，即$(x_i,y^{(i)}_j)$与$(x_i,y^{(i)}_k)$，从而判断回答的相对好坏。DPO在RLHF的理论框架基础上，利用成对偏好数据实现了这一范式，从而拟合了隐式奖励模型[[x]]()。
+​	成对反馈侧重于比较成对问答的偏序关系，即$(x_i,y^{(i)}_j)$与$(x_i,y^{(i)}_k)$，从而判断回答的相对好坏。
 
 ### 4.1.2 List-Wise Feedback
 
