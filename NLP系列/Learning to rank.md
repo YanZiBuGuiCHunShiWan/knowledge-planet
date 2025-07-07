@@ -616,16 +616,22 @@ $$
 \begin{aligned} \mathcal L_{\mathrm{RankNet}}&=-\mathbb E_{(x,y_i,y_j)\sim \mathcal D}\big[\log \left(1+e^{-\beta\left(s_{i}-s_{j}\right)}\right)\big]\\
 &=-\mathbb E_{(x,y_i,y_j)\sim \mathcal D}\big[\log \sigma (\beta s_j-\beta s_i)\big]\end{aligned}
 $$
-​	其中,$\sigma$是$\mathrm{sigmoid}$函数，可以看到，二者只是变量不同，$s_i$对应了$\mathrm{DPO}$中的$\log{\frac{\pi^*(y_1|x)}{\pi_{\text{ref}}(y_1|x)}}$，$s_j$对应$\log{\frac{\pi^*(y_2|x)}{\pi_{\text{ref}}(y_2|x)}}$。因此$\mathrm{DPO}$的训练过程可以视作是$\text{Learning to Rank}$。给定上下文$x_i$，偏好的回复$y_w$和次之偏好的回复$y_w$。DPO是在学习让$y_w$中的$\text{token}$的概率排到更前面的位置，$y_l$中的$\text{token}$要排到$y_w$中的$\text{token}$的后面。因此，$DPO$的损失函数可以不只是借助$\text{Bradley Terry}$模型的概率建模，还可以将信息检索领域的$\mathrm{PairWise}$损失集成，如上文中所介绍的$\mathrm{LambdaRank}$。
+​	其中,$\sigma$是$\mathrm{sigmoid}$函数，可以看到，二者只是变量不同，$\mathrm{RankNet}$中的$s_i$对应了$\mathrm{DPO}$中的$\log{\frac{\pi^*(y_1|x)}{\pi_{\text{ref}}(y_1|x)}}$，$s_j$对应$\log{\frac{\pi^*(y_2|x)}{\pi_{\text{ref}}(y_2|x)}}$。因此$\mathrm{DPO}$的训练过程可以视作是$\text{Learning to Rank}$。给定上下文$x_i$，偏好的回复$y_w$和次之偏好的回复$y_l$，DPO是在学习让$y_w$中的$\text{token}$的概率排到更前面的位置，$y_l$中的$\text{token}$要排到$y_w$中的$\text{token}$的后面。此外，$DPO$的损失函数可以不只是借助$\text{Bradley Terry}$模型的概率建模，还可以将信息检索领域的$\mathrm{PairWise}$损失集成，如上文中所介绍的$\mathrm{LambdaRank}$。
 
-​	$\mathrm{DPO}$在训练时会出现正负例同时上升或者下降的情况[[x]](https://zhuanlan.zhihu.com/p/1907949654739513685)。是因为其损失函数只需要正例输出的相对概率比负例大（强调二者间的相对关系，强化二者间的差值，而非绝对大小。），比如$\frac{0.35}{0.12}-\frac{0.11}{0.12}$和$\frac{0.29}{0.11}-\frac{0.10}{0.11}$都符合正例的相对概率比负例大，但实际上正例的绝对概率降低了。笔者在此给出定量的梯度更新分析:
+​	$\mathrm{DPO}$在训练时会出现正负例同时上升或者下降的情况[[x]](https://zhuanlan.zhihu.com/p/1907949654739513685)。是因为其损失函数只需要正例输出的相对概率比负例大（强调二者间的相对关系，强化二者间的差值，而非绝对大小。），比如$\frac{0.35}{0.12}-\frac{0.11}{0.12}$和$\frac{0.29}{0.11}-\frac{0.10}{0.11}$都符合正例的相对概率比负例大，但实际上正例的绝对概率降低了，即存在多种正负例取值的可能满足损失函数在减小但是正负例的输出概率增大或者减小。笔者在此给出定量的梯度更新分析，记：
 $$
-\begin{aligned}\frac{\partial \mathcal L}{\partial w_k}&=\frac{\partial \mathcal L}{\partial y_l}\frac{\partial y_l}{\partial w_k}+\frac{\partial \mathcal L}{\partial y_w}\frac{\partial y_w}{\partial w_k}\\
-&=\end{aligned}
+\begin{aligned} A=\beta\log{\frac{\pi^*(y_l|x)}{\pi_{\text{ref}}(y_l|x)}},B=\beta\log{\frac{\pi^*(y_w|x)}{\pi_{\text{ref}}(y_w|x)}}\end{aligned}
+$$
+​	求损失函数$\mathcal L=-\log(\sigma(A-B))$对参数分量$w_k$的梯度：
+$$
+\begin{aligned}\frac{\partial \mathcal L}{\partial w_k}&=\frac{\partial \mathcal L}{\partial A}\frac{\partial A}{\partial w_k}+\frac{\partial \mathcal L}{\partial B}\frac{\partial B}{\partial w_k}\\
+&=\frac{\sigma(A-B)*(1-\sigma(A-B))}{\sigma(A-B)}*\frac{\partial A}{\partial w_k}-\frac{\sigma(A-B)*(1-\sigma(A-B))}{\sigma(A-B)}*\frac{\partial B}{\partial w_k}\\
+&=(1-\sigma(A-B))*\beta(\frac{\pi_{\text{ref}}(y_l|x)}{\pi^*(y_l|x)}*\frac{\partial\pi^*(y_l|x)}{\partial w_k}-\frac{\pi_{\text{ref}}(y_w|x)}{\pi^*(y_w|x)}*\frac{\partial\pi^*(y_w|x)}{\partial w_k})\end{aligned}
 $$
 
+​	因此从梯度的角度看，rejected reward的梯度是占据主导地位的，由于损失函数的设计使得模型在优化时无法直接提升chosen reward的绝对几率，因此rejected reward若迅速降低，chosen reward存在不提升，但是慢慢降低的情况，此使使得模型输出的chosen reward仍然大于rejected reward，但是chosen reward的降低会使得模型在训练时逐渐变得不再输出人类偏好的token，训练完的模型会胡说八道，因此在训练过程中需要调整超参数或者引入额外损失等手段解决这个问题，如引入有监督阶段的SFT损失函数，提升模型输出chosen token的概率（DeepSpeed-Chat的RLHF阶段在ppo过程中可以选择性添加预训练阶段任务，即一边ppo让模型的收益增大，一边防止模型能力跑偏，因此在DPO阶段引入SFT的损失也是可行的手段之一）。
 
-​	解决方案：正则等手段，加入带权重的SFT损失函数。如KTO等工作。
+​	KTOxxxx
 
 ​	如何解决Tie的问题?
 
