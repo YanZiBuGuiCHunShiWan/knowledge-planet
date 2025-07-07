@@ -24,7 +24,7 @@ $$
 
 ​	当$S_{ij}=1$时有：
 $$
-\begin{aligned}C=\end{aligned}\log \left(1+e^{-\sigma\left(s_{i}-s_{j}\right)}\right)
+\begin{aligned}C=\log \left(1+e^{-\sigma\left(s_{i}-s_{j}\right)}\right)\end{aligned}
 $$
 ​	当$S_{ij}=0$时有：
 $$
@@ -186,7 +186,7 @@ $$
 $$
 P_j^{(i)}(r=k)=P_j^{(i-1)}(r=k-1)\pi_{ij}+P_j^{(i-1)}(r=k)\big(1-\pi_{ij}\big)
 $$
-​	最终计算得到$P_j^{(N)}(r=k):=P(r_j=k)$，针对所有的$j=1,...,N$,我们都会利用上述公式进行迭代计算得到一个位置分布向量$\mathbf P(r_j)=(P_j(0),P_j(1),....,P_j(N-1))^{\top}$，再基于公式x求得最终的$SoftNDCG$​​，作为损失函数进行反向传播。
+​	最终计算得到$P_j^{(N)}(r=k):=P(r_j=k)$，针对所有的$j=1,...,N$,我们都会利用上述公式进行迭代计算得到一个位置分布向量$\mathbf P(r_j)=(P_j(0),P_j(1),....,P_j(N-1))^{\top}$，再基于公式x求得最终的$\mathrm{SoftNDCG}$​​，作为损失函数进行反向传播。
 
 ## 3.3 Approximate Rank & SmoothRank
 
@@ -586,19 +586,52 @@ $$
 >
 > $\operatorname {Sinkhorn Scaling}$是一个需要多步（多次行归一化 + 列归一化）迭代的过程，每次操作都会在计算图里生成额外的节点，都会被自动微分库（如 PyTorch、TensorFlow）记录下来。因此会增加反向传播的计算量，不过实际过程中迭代步数比较少，且只涉及简单的行列归一化，因此计算开销可以接受。
 
-
-
 # 4.Ranking skills in Direct Preference Optimization
 
-​	预训练——有监督微调——人类反馈强化学习是打造一个高性能大语言模型的标准步骤。在对齐阶段，目前的RLHF技术如PPO在训练时不够稳定，且对计算资源要求高，为此，DPO技术应运而生，DPO的思想是将RLHF中显示的奖励函数转化到一个统意的有监督损失中，使得模型可以通过有监督的方式微调参数，在给定偏好数据（人类专家对同一输入不同输出的优劣判断）的情况下，直接学习生成更优的输出，从而绕过传统RLHF中复杂且不稳定的策略优化过程。
+​	预训练——有监督微调——人类反馈强化学习是打造一个高性能大语言模型的标准步骤。在对齐阶段，目前的RLHF技术如PPO在训练时不够稳定，且对计算资源要求高，为此，$\text{DPO}$技术应运而生，$\text{DPO}$的思想是将$\text{RLHF}$中显示的奖励函数转化到统一的有监督损失中，使得模型可以通过有监督的方式微调参数，在给定偏好数据（人类专家对同一输入不同输出的优劣判断）的情况下，直接学习生成更优的输出，从而绕过传统$\mathrm{RLHF}$​中复杂且不稳定的策略优化过程。
 
-## 4.1 Preference Feedback
+​	在实际工作中，大部分的时间都是与收集与清洗数据的工作打交道，高质量的数据对提升模型下游任务性能有最直接的影响，且模型与策略层面的改动相对来说较少。因此，本文将从数据策略的维度介绍DPO，并从Learning to Rank 的视角解析DPO。站在数据策略的角度，DPO可以分成数据质量(Data Quality)、偏好反馈(Preference Feedback)、偏好细粒度(Preference Granularity)三个层面[[x]](https://arxiv.org/abs/2503.11701)。
 
-​	偏好反馈指的可以分为PointWise反馈、PairWise反馈和ListWise反馈三类。与$\text{Ranking}$问题一样，PointWise反馈独立评估每个回答的好坏，往往视作一个回归或分类问题，为其打分或标注为正面或负面；PairWise反馈通过构造成对的偏序关系比较两两之间的好坏；而ListWise反馈则考虑了整个文档内的好坏关系。
+## 4.1 Data Quality
 
-### 4.1.1 Pair-Wise Feedback
+​	
 
-​	成对反馈侧重于比较成对问答的偏序关系，即$(x_i,y^{(i)}_j)$与$(x_i,y^{(i)}_k)$，从而判断回答的相对好坏。
+## 4.2 Preference Feedback
+
+​	偏好反馈指的可以分为$\mathrm{PointWise}$反馈、$\mathrm{PairWise}$反馈和$\mathrm{ListWise}$反馈三类。与$\text{Ranking}$问题一样，PointWise反馈独立评估每个回答的好坏，往往视作一个回归或分类问题，为其打分或标注为正面或负面；PairWise反馈通过构造成对的偏序关系比较两两之间的好坏；而ListWise反馈则考虑了整个文档内的好坏关系。
+
+### 4.2.1 Pair-Wise Feedback
+
+​	成对反馈侧重于比较成对问答的偏序关系，即给定上下文历史$x_i$，和不同的回复$y^{(i)}_j$,$y^{(i)}_k$。判断回答的相对好坏，即$(x_i,y^{(i)}_j)?(x_i,y^{(i)}_k)$。**Rafailov**&**Sharma**等人提出的DPO用$\text{Bradley-Terry}$模型建模偏好的回复$y_1$大于另一个回复的$y_2$概率，即：
+$$
+\begin{aligned}p^*(y_1\succ y_2)&=\sigma(r(x,y_1)-r(x,y_2))\\
+&=\frac{1}{1+\exp{\bigg(\beta\log{\frac{\pi^*(y_2|x)}{\pi_{\text{ref}}(y_2|x)}}-\beta\log{\frac{\pi^*(y_1|x)}{\pi_{\text{ref}}(y_1|x)}}\bigg)}}\end{aligned}
+$$
+​	借助极大似然估计的思想$\begin{aligned}\arg\max_{\theta}\log P(X;\theta)\end{aligned}$，优化目标$\mathcal L$可以写成如下形式：
+$$
+\mathcal L_{\mathrm{DPO}}(\pi_{\theta};\pi_{\text{ref}})=-\mathbb E_{(x,y_w,y_l)\sim \mathcal D}\big[\log\sigma\big(\beta\log{\frac{\pi^*(y_l|x)}{\pi_{\text{ref}}(y_l|x)}}-\beta\log{\frac{\pi^*(y_w|x)}{\pi_{\text{ref}}(y_w|x)}}\big)\big]
+$$
+​	其实这个损失函数主体形式和$\mathrm{RankNet}$的损失函数一样：
+$$
+\begin{aligned} \mathcal L_{\mathrm{RankNet}}&=-\mathbb E_{(x,y_i,y_j)\sim \mathcal D}\big[\log \left(1+e^{-\beta\left(s_{i}-s_{j}\right)}\right)\big]\\
+&=-\mathbb E_{(x,y_i,y_j)\sim \mathcal D}\big[\log \sigma (\beta s_j-\beta s_i)\big]\end{aligned}
+$$
+​	其中,$\sigma$是$\mathrm{sigmoid}$函数，可以看到，二者只是变量不同，$s_i$对应了$\mathrm{DPO}$中的$\log{\frac{\pi^*(y_1|x)}{\pi_{\text{ref}}(y_1|x)}}$，$s_j$对应$\log{\frac{\pi^*(y_2|x)}{\pi_{\text{ref}}(y_2|x)}}$。因此$\mathrm{DPO}$的训练过程可以视作是$\text{Learning to Rank}$。给定上下文$x_i$，偏好的回复$y_w$和次之偏好的回复$y_w$。DPO是在学习让$y_w$中的$\text{token}$的概率排到更前面的位置，$y_l$中的$\text{token}$要排到$y_w$中的$\text{token}$的后面。因此，$DPO$的损失函数可以不只是借助$\text{Bradley Terry}$模型的概率建模，还可以将信息检索领域的$\mathrm{PairWise}$损失集成，如上文中所介绍的$\mathrm{LambdaRank}$。
+
+​	$\mathrm{DPO}$在训练时会出现正负例同时上升或者下降的情况[[x]](https://zhuanlan.zhihu.com/p/1907949654739513685)。是因为其损失函数只需要正例输出的相对概率比负例大（强调二者间的相对关系，强化二者间的差值，而非绝对大小。），比如$\frac{0.35}{0.12}-\frac{0.11}{0.12}$和$\frac{0.29}{0.11}-\frac{0.10}{0.11}$都符合正例的相对概率比负例大，但实际上正例的绝对概率降低了。笔者在此给出定量的梯度更新分析:
+$$
+\begin{aligned}\frac{\partial \mathcal L}{\partial w_k}&=\frac{\partial \mathcal L}{\partial y_l}\frac{\partial y_l}{\partial w_k}+\frac{\partial \mathcal L}{\partial y_w}\frac{\partial y_w}{\partial w_k}\\
+&=\end{aligned}
+$$
+
+
+​	解决方案：正则等手段，加入带权重的SFT损失函数。如KTO等工作。
+
+​	如何解决Tie的问题?
+
+​	借鉴Learing to Rank的手段?
+
+
 
 ### 4.1.2 List-Wise Feedback
 
@@ -606,7 +639,7 @@ $$
 
 
 
-## 4.2 Preference Granularity
+## 4.3 Preference Granularity
 
 
 
@@ -625,5 +658,7 @@ $$
 [[6]Grover,Wang,Zweig,et al.Stochastic Optimization of Sorting Networks via Continuous Relexations[J].International Conference on Learning Representations,2019.](https://arxiv.org/abs/1903.08850)
 
 [[x]A Survey of Direct Preference Optimization](https://arxiv.org/abs/2503.11701)
+
+[[x]akaihaoshuai.基于Qwen3的DPO/KTO/ORPO/Simpo经验总结[EB/OL].(2025-06-09)-[2025-07-07].](https://zhuanlan.zhihu.com/p/1907949654739513685)
 
 [[x]**LLM Alignment as Retriever Optimization: An Information Retrieval Perspective**](https://arxiv.org/abs/2502.03699)
