@@ -139,9 +139,9 @@ $$
 
 ​	以表格中的$\max$不可导算子为例，$\operatorname{max}$ 算子的作用是从一个向量中获得最大值，如$\mathbf v=(2,3,4,1,4,5)^{\top}$的最大值是$5$，则$\max \mathbf v=5$，其近似如下：
 $$
-\max(x_1,x_2,...,x_n)\approx\lim_{K\rightarrow \infin}\frac{1}{K}\log\sum_{i=1}^{n}\exp(Kx_i)
+\max(x_1,x_2,...,x_n)\approx\lim_{\tau\rightarrow \infin}\frac{1}{\tau}\log\sum_{i=1}^{n}\exp(\tau x_i)
 $$
-​	$K$越大则近似越好，当$K$取$1$时则$\max$算子的近似就是$\operatorname{log sum exp}$​。$\operatorname{sort}$算子和采样算子笔者将会在接下来的章节详细介绍。
+​	$\tau$越大则近似越好，当$\tau$取$1$时则$\max$算子的近似就是$\operatorname{log sum exp}$。$\operatorname{sort}$算子和采样算子笔者将会在接下来的章节详细介绍。
 
 ## 3.2 SoftRank
 
@@ -609,40 +609,62 @@ $$
 $$
 ​	借助极大似然估计的思想$\begin{aligned}\arg\max_{\theta}\log P(X;\theta)\end{aligned}$，优化目标$\mathcal L$可以写成如下形式：
 $$
-\mathcal L_{\mathrm{DPO}}(\pi_{\theta};\pi_{\text{ref}})=-\mathbb E_{(x,y_w,y_l)\sim \mathcal D}\big[\log\sigma\big(\beta\log{\frac{\pi^*(y_l|x)}{\pi_{\text{ref}}(y_l|x)}}-\beta\log{\frac{\pi^*(y_w|x)}{\pi_{\text{ref}}(y_w|x)}}\big)\big]
+\mathcal L_{\mathrm{DPO}}(\pi_{\theta};\pi_{\text{ref}})=-\mathbb E_{(x,y_c,y_r)\sim \mathcal D}\big[\log\sigma\big(\beta\log{\frac{\pi^*(y_c|x)}{\pi_{\text{ref}}(y_c|x)}}-\beta\log{\frac{\pi^*(y_r|x)}{\pi_{\text{ref}}(y_r|x)}}\big)\big]
 $$
 ​	其实这个损失函数主体形式和$\mathrm{RankNet}$的损失函数一样：
 $$
 \begin{aligned} \mathcal L_{\mathrm{RankNet}}&=-\mathbb E_{(x,y_i,y_j)\sim \mathcal D}\big[\log \left(1+e^{-\beta\left(s_{i}-s_{j}\right)}\right)\big]\\
-&=-\mathbb E_{(x,y_i,y_j)\sim \mathcal D}\big[\log \sigma (\beta s_j-\beta s_i)\big]\end{aligned}
+&=-\mathbb E_{(x,y_i,y_j)\sim \mathcal D}\big[\log \sigma (\beta s_i-\beta s_j)\big]\end{aligned}
 $$
-​	其中,$\sigma$是$\mathrm{sigmoid}$函数，可以看到，二者只是变量不同，$\mathrm{RankNet}$中的$s_i$对应了$\mathrm{DPO}$中的$\log{\frac{\pi^*(y_1|x)}{\pi_{\text{ref}}(y_1|x)}}$，$s_j$对应$\log{\frac{\pi^*(y_2|x)}{\pi_{\text{ref}}(y_2|x)}}$。因此$\mathrm{DPO}$的训练过程可以视作是$\text{Learning to Rank}$。给定上下文$x_i$，偏好的回复$y_w$和次之偏好的回复$y_l$，DPO是在学习让$y_w$中的$\text{token}$的概率排到更前面的位置，$y_l$中的$\text{token}$要排到$y_w$中的$\text{token}$的后面。此外，$DPO$的损失函数可以不只是借助$\text{Bradley Terry}$模型的概率建模，还可以将信息检索领域的$\mathrm{PairWise}$损失集成，如上文中所介绍的$\mathrm{LambdaRank}$。
+​	其中,$\sigma$是$\mathrm{sigmoid}$函数，可以看到，二者只是变量不同，$\mathrm{RankNet}$中的$s_i$对应了$\mathrm{DPO}$中的$\log{\frac{\pi^*(y_c|x)}{\pi_{\text{ref}}(y_c|x)}}$，$s_j$对应$\log{\frac{\pi^*(y_r|x)}{\pi_{\text{ref}}(y_r|x)}}$。因此$\mathrm{DPO}$的训练过程可以视作是$\text{Learning to Rank}$,给定上下文$x_i$，偏好的回复$y_c$和次之的回复$y_r$，DPO是在学习让$y_c$中的$\text{token}$的概率排到$y_r$更前面的位置。此外，$DPO$的损失函数可以不只是借助$\text{Bradley Terry}$模型的概率建模，还可以将信息检索领域的$\mathrm{PairWise}$损失集成，如上文中所介绍的$\mathrm{LambdaRank}$。
 
-​	$\mathrm{DPO}$在训练时会出现正负例同时上升或者下降的情况[[x]](https://zhuanlan.zhihu.com/p/1907949654739513685)。是因为其损失函数只需要正例输出的相对概率比负例大（强调二者间的相对关系，强化二者间的差值，而非绝对大小。），比如$\frac{0.35}{0.12}-\frac{0.11}{0.12}$和$\frac{0.29}{0.11}-\frac{0.10}{0.11}$都符合正例的相对概率比负例大，但实际上正例的绝对概率降低了，即存在多种正负例取值的可能满足损失函数在减小但是正负例的输出概率增大或者减小。笔者在此给出定量的梯度更新分析，记：
+​	$\mathrm{DPO}$在训练时会出现正负例奖励同时上升或者下降的情况[[x]](https://zhuanlan.zhihu.com/p/1907949654739513685)。是因为其损失函数只需要正例输出的相对概率比负例大（强调二者间的相对关系，强化二者间的差值，而非绝对大小。），比如$\frac{0.35}{0.12}-\frac{0.11}{0.12}$和$\frac{0.29}{0.11}-\frac{0.10}{0.11}$都符合正例的相对概率比负例大，但实际上正例的奖励降低了，即存在多种正负例取值的可能满足损失函数在减小但是正负例的奖励增大或者减小。笔者在此给出定量的梯度更新分析，记：
 $$
-\begin{aligned} A=\beta\log{\frac{\pi^*(y_l|x)}{\pi_{\text{ref}}(y_l|x)}},B=\beta\log{\frac{\pi^*(y_w|x)}{\pi_{\text{ref}}(y_w|x)}}\end{aligned}
+\begin{aligned} A=\beta\log{\frac{\pi^*(y_c|x)}{\pi_{\text{ref}}(y_c|x)}},B=\beta\log{\frac{\pi^*(y_r|x)}{\pi_{\text{ref}}(y_r|x)}}\end{aligned}
 $$
 ​	求损失函数$\mathcal L=-\log(\sigma(A-B))$对参数分量$w_k$的梯度：
 $$
 \begin{aligned}\frac{\partial \mathcal L}{\partial w_k}&=\frac{\partial \mathcal L}{\partial A}\frac{\partial A}{\partial w_k}+\frac{\partial \mathcal L}{\partial B}\frac{\partial B}{\partial w_k}\\
 &=\frac{\sigma(A-B)*(1-\sigma(A-B))}{\sigma(A-B)}*\frac{\partial A}{\partial w_k}-\frac{\sigma(A-B)*(1-\sigma(A-B))}{\sigma(A-B)}*\frac{\partial B}{\partial w_k}\\
-&=(1-\sigma(A-B))*\beta(\frac{\pi_{\text{ref}}(y_l|x)}{\pi^*(y_l|x)}*\frac{\partial\pi^*(y_l|x)}{\partial w_k}-\frac{\pi_{\text{ref}}(y_w|x)}{\pi^*(y_w|x)}*\frac{\partial\pi^*(y_w|x)}{\partial w_k})\end{aligned}
+&=(1-\sigma(A-B))*\beta(\frac{\pi_{\text{ref}}(y_c|x)}{\pi^*(y_c|x)}*\frac{\partial\pi^*(y_c|x)}{\partial w_k}-\frac{\pi_{\text{ref}}(y_r|x)}{\pi^*(y_r|x)}*\frac{\partial\pi^*(y_r|x)}{\partial w_k})\end{aligned}
 $$
 
-​	因此从梯度的角度看，rejected reward的梯度是占据主导地位的，由于损失函数的设计使得模型在优化时无法直接提升chosen reward的绝对几率，因此rejected reward若迅速降低，chosen reward存在不提升，但是慢慢降低的情况，此使使得模型输出的chosen reward仍然大于rejected reward，但是chosen reward的降低会使得模型在训练时逐渐变得不再输出人类偏好的token，训练完的模型会胡说八道，因此在训练过程中需要调整超参数或者引入额外损失等手段解决这个问题，如引入有监督阶段的SFT损失函数，提升模型输出chosen token的概率（DeepSpeed-Chat的RLHF阶段在ppo过程中可以选择性添加预训练阶段任务，即一边ppo让模型的收益增大，一边防止模型能力跑偏，因此在DPO阶段引入SFT的损失也是可行的手段之一）。
+​	因此从梯度的角度看，rejected reward的梯度是占据主导地位的，由于损失函数的设计使得模型在优化时无法直接提升chosen reward的绝对几率，因此rejected reward若迅速降低，chosen reward存在不提升，但是慢慢降低的情况，此使使得模型输出的chosen reward仍然大于rejected reward，但是chosen reward的降低会使得模型在训练时逐渐变得不再输出人类偏好的token，训练完的模型会胡说八道，因此在训练过程中需要调整超参数或者引入额外损失等手段解决这个问题，如引入有监督阶段的SFT损失函数，提升模型输出chosen token的概率（DeepSpeed-Chat的RLHF阶段在ppo过程中可以选择性添加预训练阶段任务，即一边ppo让模型的收益增大，一边防止模型能力跑偏，因此在DPO时引入SFT的损失也是可行的手段之一）。
 
-​	KTOxxxx
+​	SimPOxxxxxx
 
-​	如何解决Tie的问题?
-
-​	借鉴Learing to Rank的手段?
-
-
+​	DPO运用了Bradley Terry模型建模不同偏好回复的胜负概率，当成对标注出现$y_j=y_k$时，Bradley Terry模型无法准确建模，成对比较出现打平的情况是十分常见的，如在CBT-Bench中可以看到不同模型和参考答案比较时二者打平的情况其实不在少数，那么如何解决成对比较打平的问题?——引入新的比较模型或是借鉴Learing to Rank的策略。前者的方式是将Bradley Terry 模型替换成可以建模平均概率的$\text{Rao-Kupper }$模型与$\text{Davidson}$模型[[x]](https://arxiv.org/pdf/2409.17431)。本文仅以$\text{Rao-Kupper }$模型为例:
+$$
+\begin{aligned}p(y_i\succ y_j)&=\frac{\lambda_i}{\lambda_i+\mathcal V\lambda_j}=\frac{1}{1+\mathcal V\lambda_j/\lambda_i}\\
+p(y_i\sim y_j)&=\frac{(\mathcal V^2-1)\lambda_i\lambda_j}{(\lambda_i+\mathcal V\lambda_j)(\lambda_j+\mathcal V\lambda_i)}=\frac{(\mathcal V^2-1)}{(1+\mathcal V\lambda_j/\lambda_i)(1+\mathcal V\lambda_i/\lambda_j)}\end{aligned}
+$$
+​	此时有$p(y_i\succ y_j)+p(y_j\succ y_i)+p(y_i\sim y_j)=1$，是合法的概率密度函数，其中$\mathcal V$用于控制模型分配给平均的概率，我们可以看看$p(y_i\succ y_j)+p(y_j\succ y_i)$与$p(y_i \sim y_j)$的关系，当$\lambda_i=\lambda_j$时：
+$$
+\begin{aligned} p(y_i\succ y_j)+p(y_j\succ y_i)&=\frac{\lambda_i}{\lambda_i+\mathcal V\lambda_j}+\frac{\lambda_j}{\lambda_j+\mathcal V\lambda_i}\\
+&=\frac{2\lambda_i\lambda_j+\mathcal V(\lambda_i^2+\lambda_j^2)}{(\lambda_i+\mathcal V\lambda_j)(\lambda_j+\mathcal V\lambda_i)}\\
+&=\frac{2(\mathcal V+1)\lambda^2}{(1+\mathcal V)^2\lambda^2}\\
+&=\frac{\mathcal V-1}{2}p(y_i\sim y_j)\end{aligned}
+$$
+​	这表明参数$\mathcal V$决定了匹配的项目被判定为平局或不平局的概率，取$\mathcal V=3$有平局概率与不平局概率相同，皆为$0.5$。记$\lambda_i$为$\log{\frac{\pi^*(y_c|x)}{\pi_{\text{ref}}(y_c|x)}}$,$\lambda_j$为$\log{\frac{\pi^*(y_r|x)}{\pi_{\text{ref}}(y_r|x)}}$。那么此时，基于$\text{Rao-Kupper }$模型的损失函数可以写作：
+$$
+\begin{aligned}\mathcal L_{\mathrm{DPO}^{\mathrm{RK}}}(\pi_{\theta};\pi_{\text{ref}})&=-\mathbb E_{(x,y_c\succ y_r)\sim \mathcal D}\big[\log\sigma(\lambda_i-\lambda_j-\alpha)\big]-\\ &\mathbb E_{(x,y_c\sim y_r)\sim \mathcal D}\big[\log\sigma(\lambda_j-\lambda_i-\alpha)+\log(\sigma(\lambda_i-\lambda_j-\alpha))-\log(\mathcal V^2-1)\big] \end{aligned}
+$$
 
 ### 4.1.2 List-Wise Feedback
 
-​	
-
+​	ListWise形式的反馈将考虑多个候选回答间的整体关系，即多个回答间的相对顺序。上一小节我们发现了DPO实际上可以看作是在排序学习，那么，在List-Wise FeedBack中我们同样可以引入传统的learning to rank策略，如像$\mathrm{ListMLE}$一样直接优化排序出现的似然，即给定模型预测的分数向量$\mathbf s$，按照真实顺序$\pi$排序后得到$\mathbf s_{\pi}$，$s_{\pi(k)}$是$\mathbf s_{\pi}$的第$k$个分量，也是第$k$大的元素，那么损失函数可以写作：
+$$
+\begin{aligned} \mathcal L_{\mathrm{ListMLE}}=-\mathbb E_{x,\mathbf y\sim\mathcal D}\big[\log\prod_{k=1}^{K}\frac{\exp{s_{\pi(k)}}}{\sum_{j=k}^{K}\exp(s_{\pi(k)})}\big]\end{aligned}
+$$
+​	同样，$\mathrm{ListNet}$损失函数也能用于$\mathrm{DPO}$，给定真实的相关性标签$\mathbf \psi=(\psi_1,\ldots,\psi_K)$，模型预测的分数向量$\mathbf s$，损失函数可以写成：
+$$
+\begin{aligned} \mathcal L_{\mathrm{ListMLE}}&=-\mathbb E_{x,\mathbf y,\psi\sim\mathcal D}\big[\sum_{k=1}^{K}P_{\psi_k}\log\sum_{k=1}^{K}\frac{\exp(s_k)}{\sum_{j=k}^{K}\exp(s_j)}\big]\\
+&=-\mathbb E_{x,\mathbf y,\psi\sim\mathcal D}\big[\sum_{k=1}^{K}\frac{\psi_k}{\sum_{j=1}^{K}\psi_jk}\log\bigg(\sum_{k=1}^{K}\frac{\exp(s_k)}{\sum_{j=1}^{K}\exp(s_j)}\bigg)\big]\end{aligned}
+$$
+​	$\text{LiPO-}\lambda$[[x]]()直接定义$\lambda$梯度，得到优化目标如下：
+$$
+\mathbb{E}_{x, \mathbf{y}, \psi \sim \mathcal{D}}\left[\sum_{\psi_{i}>\psi_{j}} \Delta_{i, j} \log \left(1+e^{-\left(s_{i}-s_{j}\right)}\right)\right],
+$$
 
 
 ## 4.3 Preference Granularity
@@ -666,5 +688,11 @@ $$
 [[x]A Survey of Direct Preference Optimization](https://arxiv.org/abs/2503.11701)
 
 [[x]akaihaoshuai.基于Qwen3的DPO/KTO/ORPO/Simpo经验总结[EB/OL].(2025-06-09)-[2025-07-07].](https://zhuanlan.zhihu.com/p/1907949654739513685)
+
+[[x]Chen,Yang,Lin,et al.ON EXTANDING DIRECT PREFERENCE OPTIMIZATION TO ACCOMNODATE TIES.](https://arxiv.org/pdf/2409.17431)
+
+[[x]Liu,Qin,Wu,et al.LiPO: Listwise Preference Optimization through Learning-to-Rank](https://arxiv.org/pdf/2402.01878)
+
+[[x]Zhao,Wang,Yin,et al.Ordinal Preference Optimization: Aligning Human Preferences via NDCG]()
 
 [[x]**LLM Alignment as Retriever Optimization: An Information Retrieval Perspective**](https://arxiv.org/abs/2502.03699)
