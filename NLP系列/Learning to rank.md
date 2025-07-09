@@ -216,7 +216,7 @@ $$
 
 ## 3.4 ListNet&ListMLE
 
-​	ListNet将排序视作一个概率分布，用交叉熵损失优化排序网络。具体地，ListNet先介绍了排列概率$\text{(Permutation Probability)}$，假设$\pi$是一个关于$n$个物品的排列，$\Phi$是一个严格单调增函数，给定一个分数列表$\mathbf s$，则排列$\pi$出现对应的概率定义为：
+​	ListNet[[x]]()将排序视作一个概率分布，用交叉熵损失优化排序网络。具体地，ListNet先介绍了排列概率$\text{(Permutation Probability)}$，假设$\pi$是一个关于$n$个物品的排列，$\Phi$是一个严格单调增函数，给定一个分数列表$\mathbf s$，则排列$\pi$出现对应的概率定义为：
 
 $$
 P_{\mathbf s}(\pi):=\prod_{j=1}^n\frac{\Phi(\mathbf s_{\pi(j)})}{\sum_{k=j}^{n}\Phi(\mathbf s_{\pi(k)})}
@@ -272,7 +272,7 @@ $$
 
 ## 3.5 Neural Sort&Neural NDCG
 
-​	在上述的ListWise形式的排序中，由于$NDCG$​指标的计算关于神经网络的输出是一个不可导的操作，因此不可直接优化，可以通过函数近似替代的方式或者与位置无关的损失函数来优化网络，那有没有研究是找到一个离散的排序的可导近似呢？——NeuralSort就是一种“连续松弛”，是排序操作的可导近似。
+​	在上述的ListWise形式的排序中，由于$NDCG$​指标的计算关于神经网络的输出是一个不可导的操作，因此不可直接优化，可以通过函数近似替代的方式或者与位置无关的损失函数来优化网络，那有没有研究是找到一个离散的排序的可导近似呢？——NeuralSort[[x]]()就是一种“连续松弛”，是排序操作的可导近似。
 
 ​	Neural Sort的目标是通过反向传播的方式优化包含$\operatorname{sort}$算子的优化目标，即如下形式：
 $$
@@ -444,9 +444,9 @@ $$
 $$
 ​	在离散情况，将随机变量$z$用$y$代替，以从类别分布中采样为例：
 $$
-\mathbf p_{\theta}=[\mathbf p_{\theta1},\mathbf p_{\theta2},...,\mathbf p_{\theta k}]
+\mathbf P_{\theta}=[P_{\theta1},P_{\theta2},...,P_{\theta k}]
 $$
-​	现在$y\sim \operatorname{Categorical(\mathbf p_{\theta})}$，我们需要找一个确定性的可导分布$y=g_{\theta}(\epsilon)$使得采样的随机性转移到随机变量$\epsilon$上，而$\operatorname{Gumbel Max}$提供了一种从类别分布中采样的方法（本节暂不对此进行深入的原理解析）：
+​	现在$y\sim \operatorname{Categorical(\mathbf P_{\theta})}$，我们需要找一个确定性的可导分布$y=g_{\theta}(\epsilon)$使得采样的随机性转移到随机变量$\epsilon$上，而$\operatorname{Gumbel Max}$提供了一种从类别分布中采样的方法（本节暂不对此进行深入的原理解析）：
 $$
 \begin{aligned} \arg\max_i &\big(\log \mathbf p_{\theta i} -\log(-\log\epsilon_i)\big)^k \\
 \epsilon_i &\sim U[0,1]\end{aligned}
@@ -460,7 +460,7 @@ $$
 \big(\log \mathbf p_{\theta k} -\log(-\log\epsilon_k)\big)^k
 \end{pmatrix}
 $$
-​	前面讲过$\arg\max$算子不可导，通常用算子$\operatorname{softmax with temperature}$近似，因此得到了$\operatorname{Gumbel Max}$的可导近似$\operatorname{Gumbel Softmax}$，回到主题上，利用Gumbel-Max trick，对得分向量$\mathbf s$中每个元素加上独立$\operatorname{Gumbel}$噪声，使得:
+​	前面讲过$\arg\max$算子不可导，通常用算子$\operatorname{softmax with temperature}$近似，因此得到了$\operatorname{Gumbel Max}$的可导近似$\operatorname{Gumbel Softmax}$，回到主题上，利用$\text{Gumbel-Max Trick}$，对得分向量$\mathbf s$中每个元素加上独立$\operatorname{Gumbel}$噪声，使得:
 $$
 \tilde {\mathbf s}=\beta\log\mathbf s_i+g_i,g_i\sim \operatorname{Gumbel}(0,1)
 $$
@@ -603,7 +603,7 @@ $$
 
 ​	因此从梯度的角度看，rejected reward的梯度是占据主导地位的，由于损失函数的设计使得模型在优化时无法直接提升chosen reward，因此rejected reward若迅速降低，chosen reward存在不提升，但是慢慢降低的情况，此使使得模型输出的chosen reward仍然大于rejected reward，但是chosen reward的降低会使得模型在训练时逐渐变得不再输出人类偏好的token，训练完的模型会胡说八道，因此在训练过程中需要调整超参数或者引入额外损失等手段解决这个问题，如引入有监督阶段的SFT损失函数，提升模型输出chosen token的概率（DeepSpeed-Chat的RLHF阶段在ppo过程中可以选择性添加预训练阶段任务，即一边ppo让模型的收益增大，一边防止模型能力跑偏，因此在DPO时引入SFT的损失也是可行的手段之一）。
 
-​	DPO运用了Bradley Terry模型建模不同偏好回复的胜负概率，当成对标注出现$y_j=y_k$时，Bradley Terry模型无法准确建模，成对比较出现打平的情况是十分常见的，如在CBT-Bench中可以看到不同模型和参考答案比较时二者打平的情况其实不在少数，那么如何解决成对比较打平的问题?——引入新的比较模型或是借鉴Learing to Rank的策略。前者的方式是将Bradley Terry 模型替换成可以建模平均概率的$\text{Rao-Kupper }$模型与$\text{Davidson}$模型[[x]](https://arxiv.org/pdf/2409.17431)。本文仅以$\text{Rao-Kupper }$模型为例:
+​	DPO运用了Bradley Terry模型建模不同偏好回复的胜负概率，当成对标注出现$y_j=y_k$时，$\text{Bradley Terry}$模型无法准确建模，成对比较出现打平的情况是十分常见的，如在CBT-Bench[[x]]()中可以看到不同模型和参考答案比较时二者打平的情况其实不在少数，那么如何解决成对比较打平的问题?——引入新的比较模型或是借鉴Learing to Rank的策略。前者的方式是将Bradley Terry 模型替换成可以建模平均概率的$\text{Rao-Kupper }$模型与$\text{Davidson}$模型[[x]](https://arxiv.org/pdf/2409.17431)。本文仅以$\text{Rao-Kupper }$模型为例:
 $$
 \begin{aligned}p(y_i\succ y_j)&=\frac{\lambda_i}{\lambda_i+\mathcal V\lambda_j}=\frac{1}{1+\mathcal V\lambda_j/\lambda_i}\\
 p(y_i\sim y_j)&=\frac{(\mathcal V^2-1)\lambda_i\lambda_j}{(\lambda_i+\mathcal V\lambda_j)(\lambda_j+\mathcal V\lambda_i)}=\frac{(\mathcal V^2-1)}{(1+\mathcal V\lambda_j/\lambda_i)(1+\mathcal V\lambda_i/\lambda_j)}\end{aligned}
@@ -660,11 +660,21 @@ $$
 
 [[3]Taylor,Guiver,Robertson,et al.SoftRank: Optimising Non-Smooth Rank Metrics,SIGIR LETOR Workshop ’07,Amsterdam, Netherlands.](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/SoftRankWsdm08Submitted.pdf)
 
-[[4]]()
+[[4]Approximate Rank]()
 
-[[5]J.]()
+[[5]Smooth RankJ.]()
+
+[[x]ListNet]()
+
+[[x]ListMLE]()
+
+[[x]P-ListMLE]()
 
 [[6]Grover,Wang,Zweig,et al.Stochastic Optimization of Sorting Networks via Continuous Relexations[J].International Conference on Learning Representations,2019.](https://arxiv.org/abs/1903.08850)
+
+[[x]苏建林Blog]()
+
+[[x]Gumbel Max]()
 
 [[x]A Survey of Direct Preference Optimization](https://arxiv.org/abs/2503.11701)
 
