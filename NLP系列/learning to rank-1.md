@@ -28,3 +28,31 @@
 $$
 \begin{aligned}\lim_{\tau\rightarrow0^+}\frac{\exp(\operatorname{Sim}(\mathbf h_i,\mathbf h_j^+)/\tau)}{\sum_{k=1}^{n}\exp(\operatorname{Sim}(\mathbf h_i,\mathbf h_k^+)/\tau)+\exp(\operatorname{Sim}(\mathbf h_i,\mathbf h_k^-)/\tau)}\end{aligned}
 $$
+
+
+
+
+## 3.5 Bolztman Rank
+
+​	Bolztman Rank的思想与ListNet也类似，定义一个排序概率，考虑给定分数$\mathbf s$下目标性能度量的期望值，并将该期望作为优化指标，受统计物理学中玻尔兹曼分布的启发，给定分数列表$\mathbf S^{(f)}=\set{s_1,...,s_m}$和排序$\mathbf R=\set{r_1,...,r_m}$，Boltzman Rank先定义了一个给定$\mathbf s$下$R$出现的能量作为：
+$$
+E(R|\mathbf S)=\frac{2}{m(m-1)}\sum_{r_j>r_k}g_q(r_j-r_k)(s_j-s_k)
+$$
+​	其中$g_q$可以是任意的符号保持函数，顾名思义，是指 **在输入值正负不变的情况下，输出值的正负也保持不变的函数**。换句话说，如果输入的两个值的相对大小关系是确定的，那么它们经过该函数变换后的相对大小关系仍然保持不变。如$g_q(x)=a_qx$，其他的函数还有仿射函数$f(x)=kx+b$，指数函数$e^x$。从公式中我们可以知道，当$s_j\gt\gt s_k$时，说明$R$与$\mathbf s$不太匹配，会获得一个较大的能量，当$s_j<<s_k$时，则会获得比较少的能量。而在物理系统中，**较低的能量通常表示更稳定的状态**，较高的能量表示系统处于更不稳定、不自然的状态，系统会容易发生改变，因此，较低的能量说明$R$与$\mathbf s$​排序关系较为一致，反之则不匹配。利用能量函数，我们现在可以通过指数化和归一化来定义文档排列上的条件玻尔兹曼分布：
+$$
+\begin{aligned}P(\mathbf R|\mathbf S)=\frac{1}{Z(\mathbf S)}\exp{(-E(\mathbf R|\mathbf S))} \\
+Z(\mathbf S)=\sum_{\mathbf R} \exp{(-E(\mathbf R|\mathbf S))}\end{aligned}
+$$
+​	$\mathbf S$是神经网络的输出，即我们希望在给定网络预测$\mathbf S$的情况下，某个具体的排列$\mathbf R$出现的概率最大，但是$\mathbf R$出现的排列可能性是$m!$，因此分母项$\mathbf Z(\mathbf S)$只能近似计算。如SoftRank中近似计算$P(r_j=k)$，在SoftRank中文档$doc_j$被文档$doc_i$打败的概率为高斯分布：
+$$
+s_j\sim\mathcal N(\bar {s_i}-\bar{s_j},2\sigma_s^2)
+$$
+​	在Boltzman Rank中借用Bradley Terry模型定义文档$doc_j$被文档$doc_i$​打败的概率如下：
+$$
+\pi_{ij}=P(s_i>s_j)=\frac{\exp{(-k*s_i)}}{\exp{(-k*s_i)}+\exp{(-k*s_i)}}
+$$
+​	此外，Boltzman Rank认为打分函数$f$（神经网络）由两部分构成：（1）单点打分的函数$\phi$，无需考虑文档对之间的关系。（2）成对打分函数$\psi$。任何给定文档$d_j$的最终分数计算如下：
+$$
+f(d_j|q,D)=\phi(d_j)+\sum_{k,k\neq j}\psi(d_j,d_k)
+$$
+​	xxxx

@@ -1,6 +1,6 @@
 # Learning to Rank
 
-​	在信息检索（IR）和推荐系统领域，排序（Ranking）问题始终是核心任务之一。从搜索引擎返回的网页列表，到电商平台为用户推荐的商品，排序算法无处不在。为了更智能、更个性化地进行排序，**Learning to Rank（L2R，学习排序）** 应运而生。Learning to Rank 的起源可以追溯到 2000 年代初期，随着机器学习在自然语言处理和信息检索中的广泛应用，人们逐渐意识到传统的基于规则或启发式的排序方法难以应对复杂的用户需求。2005 年，微软亚洲研究院发表了著名的 RankNet（基于神经网络的排序学习模型），随后又推出 LambdaRank 和 LambdaMART，这些工作开启了用监督学习方法直接优化排序的新时代。排序方法整体可分为Point-Wise,Pair-Wise,List-Wise三种，本文接下来讲按照顺序介绍这三种方法的思想与具体细节。
+​	在信息检索和推荐系统领域，排序问题始终是核心任务之一。从搜索引擎返回的网页列表，到电商平台为用户推荐的商品，排序算法无处不在。为了更智能、更个性化地进行排序，**Learning to Rank（学习排序）** 应运而生。Learning to Rank 的起源可以追溯到 2000 年代初期，随着机器学习在自然语言处理和信息检索中的广泛应用，人们逐渐意识到传统的基于规则或启发式的排序方法难以应对复杂的用户需求。2005 年，微软亚洲研究院发表了著名的 $\text{RankNet}$（基于神经网络的排序学习模型），随后又推出 $\text{LambdaRank }$和 $\text{LambdaMART}$，这些工作开启了用监督学习方法直接优化排序的新时代。排序方法整体可分为Point-Wise,Pair-Wise,List-Wise三种，本文接下来讲按照顺序介绍文档排序场景下这三种方法的思想与具体细节。
 
 # 1.Point-Wise
 
@@ -14,7 +14,7 @@
 
 ## 2.1 RankNet& lambda Rank
 
-​	$\mathrm{RankNet}$ 的核心思想是使用 **成对比较（pairwise approach）** 来学习一个排序函数，该函数可以根据文档对$(doc_i,doc_j)$的相关性预测它们相对于查询$q$的排序顺序。$\mathrm{RankNet}$ 的损失函数可以表示为[[x]]()：	
+​	$\mathrm{RankNet}$ 的核心思想是使用 **成对比较（pairwise approach）** 来学习一个排序函数，该函数可以根据文档对$(doc_i,doc_j)$的相关性预测它们相对于查询$q$的排序顺序。$\mathrm{RankNet}$ 的损失函数可以表示为[[2]]()：	
 $$
 \begin{align}
             C=\frac{1}{2}\left(1-S_{i j}\right) \sigma\left(s_{i}-s_{j}\right)+\log \left(1+e^{-\sigma\left(s_{i}-s_{j}\right)}\right)
@@ -141,13 +141,13 @@ $$
 $$
 \max(x_1,x_2,...,x_n)\approx\lim_{\tau\rightarrow \infin}\frac{1}{\tau}\log\sum_{i=1}^{n}\exp(\tau x_i)
 $$
-​	$\tau$越大则近似越好，当$\tau$取$1$时则$\max$算子的近似就是$\operatorname{log sum exp}$。$\operatorname{sort}$算子和采样算子笔者将会在接下来的章节详细介绍。
+​	$\tau$越大则近似越好，当$\tau$取$1$时则$\max$算子的近似就是$\operatorname{log sum exp}$。$\operatorname{sort}$算子和采样算子本文将会在接下来的章节详细介绍。
 
 ## 3.2 SoftRank
 
-​	SoftRank的思想是过文档的得分和排名进行概率建模，实现了对NDCG等指标的可微近似，从而使得梯度下降等优化方法得以应用。$NDCG$指标计算依赖于$DCG$和$IDCG$，但是$DCG$这个指标中涉及到了$\mathrm {sort}$的操作是不可导算子，因此训练时没法直接反向传播，如果将$DCG$和$IDCG$有一个平滑点的可导函数近似，那$NDCG$自然也就可导了。
+​	$\text{SoftRank}$[[3]](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/SoftRankWsdm08Submitted.pdf)的思想是过文档的得分和排名进行概率建模，实现了对$\text{NDCG}$等指标的可微近似，从而使得梯度下降等优化方法得以应用。$\text{NDCG}$指标计算依赖于$\text{DCG}$和$\text{IDCG}$，但是$\text{DCG}$这个指标中涉及到了$\mathrm {sort}$的操作是不可导算子，因此训练时没法直接反向传播，如果将$\text{DCG}$和$\text{IDCG}$有一个平滑点的可导函数近似，那$\text{NDCG}$自然也就可导了。
 
-​	具体地，假设当前查询$query$有$k$个候选文档集合$\set{doc_j}_{j=1}^{k}$。将$query$与$doc_j$拼接后得到的文本对$\mathbf x_j$送入一个$\mathrm{Encoder}$，得到神经网络输出的$k$个分数$f(\mathbf \theta,\mathbf x_j),j=1,..,k$，SoftRank假设当前文本对$\mathbf x_j$的输出分数$s_j$不再是确定的，而是服从于高斯分布：
+​	具体地，假设当前查询$query$有$k$个候选文档集合$\set{doc_j}_{j=1}^{k}$。将$query$与$doc_j$拼接后得到的文本对$\mathbf x_j$送入一个$\mathrm{Encoder}$，得到神经网络输出的$k$个分数$f(\mathbf \theta,\mathbf x_j),j=1,..,k$，$\text{SoftRank}$假设当前文本对$\mathbf x_j$的输出分数$s_j$不再是确定的，而是服从于高斯分布：
 $$
 \begin{aligned} s_j \sim \mathcal N(s_j|f(\mathbf \theta,\mathbf x_j),\sigma_s^2)\end{aligned}
 $$
@@ -186,16 +186,18 @@ $$
 $$
 P_j^{(i)}(r=k)=P_j^{(i-1)}(r=k-1)\pi_{ij}+P_j^{(i-1)}(r=k)\big(1-\pi_{ij}\big)
 $$
-​	最终计算得到$P_j^{(N)}(r=k):=P(r_j=k)$，针对所有的$j=1,...,N$,我们都会利用上述公式进行迭代计算得到一个位置分布向量$\mathbf P(r_j)=(P_j(0),P_j(1),....,P_j(N-1))^{\top}$，再基于公式x求得最终的$\mathrm{SoftNDCG}$​​，作为损失函数进行反向传播。
+​	最终计算得到$P_j^{(N)}(r=k):=P(r_j=k)$，针对所有的$j=1,...,N$,我们都会利用上述公式进行迭代计算得到一个位置分布向量$\mathbf P(r_j)=(P_j(0),P_j(1),....,P_j(N-1))^{\top}$，再基于公式x求得最终的$\mathrm{SoftNDCG}$​​​，作为损失函数进行反向传播。
 
-## 3.3 Approximate Rank & SmoothRank
 
-​	Approximate Rank认为$NDCG$指标不连续的根本原因在于排序的位置关于排序的得分是一个不可导的映射，因此将排序位置用排序分数近似是一个非常直接的想法，具体地，$DCG=\sum_{i=1}^{N}g(j)D(r_j)=\sum_{i=1}^{N}g(j)/\log(1+\pi(\mathbf x_j))$，而$\pi(\mathbf x_j)$是文档在按照模型预测的相关性分数排序后的列表中的位置，从分数到位置的这个操作是不可导的，我们可以把$\pi(\mathbf x_j)$用$s_j=f(\theta,\mathbf x_j)$进行近似：
+
+## 3.3 $\text{Approximate Rank}$ & $\text{SmoothRank}$
+
+​	$\text{Approximate Rank}$[[x]]()认为$\text{NDCG}$指标不连续的根本原因在于排序的位置关于排序的得分是一个不可导的映射，因此将排序位置用排序分数近似是一个非常直接的想法，具体地，$DCG=\sum_{i=1}^{N}g(j)D(r_j)=\sum_{i=1}^{N}g(j)/\log(1+\pi(\mathbf x_j))$，而$\pi(\mathbf x_j)$是文档在按照模型预测的相关性分数排序后的列表中的位置，从分数到位置的这个操作是不可导的，我们可以把$\pi(\mathbf x_j)$用$s_j=f(\theta,\mathbf x_j)$进行近似：
 $$
 \begin{aligned}\pi(\mathbf x_j)&=1+\sum_{i=1,i\neq j}^N\operatorname I\set{s_i>s_j}\\
 &\approx 1+\sum_{i=1,i\neq j}^NP(s_i-s_j>0)\end{aligned}
 $$
-​	其中指示函数$\mathbf I$可以用概率近似，Approximate Rank提出以如下方式近似$\pi(\mathbf x_j)$：
+​	其中指示函数$\mathbf I$可以用概率近似，$\text{Approximate Rank}$提出以如下方式近似$\pi(\mathbf x_j)$：
 $$
 \begin{aligned}\hat \pi(\mathbf x_j)&=1+\sum_{i=1,i\neq j}^NP(s_i-s_j>0)\\
 &=1+\sum_{i=1,i\neq j}\frac{\exp(-\alpha(s_j-s_i))}{1+\exp(-\alpha(s_j-s_i))}\end{aligned}
@@ -204,7 +206,7 @@ $$
 $$
 \begin{aligned}L(f;\mathbf x,\mathbf y)&=1-G_{\max}^{-1}\sum_{j=1}^{N}g(j)/\log(1+\hat\pi(\mathbf x_j))\end{aligned}
 $$
-​	SmoothRank的思想与Approximate Rank类似，都是基于近似$\pi(\mathbf x_j)$的思想，区别在于近似时的概率质量函数不同，SmoothRank的具体近似公式如下：
+​	$\text{SmoothRank}$的思想与$\text{Approximate Rank}$类似，都是基于近似$\pi(\mathbf x_j)$的思想，区别在于近似时的概率质量函数不同，$\text{SmoothRank}$的具体近似公式如下：
 
 ​	
 
@@ -241,56 +243,34 @@ $$
 
 > Top one probabilities  $P_{\mathbf s}(j)$ forms a probability distribution over the set of n objects.
 
-​	通过Top1概率，给定一个真实标签的概率分布$\mathbf P_{\mathbf y}^{(i)}$和模型输出的概率分布$\mathbf P_{\mathbf z}^{(i)}$，我们就可以用一个度量分布的指标作为损失函数，这里笔者沿用论文中的符号，查询$q^{(i)}$对应的候选文档集合为$\mathbf d^{(i)}=\set{d^{(i)}_{1},...,d_{n^{(i)}}^{(i)}}$，查询$q^{(i)}$对应文档集合的人工标记相关性分数向量记作$\mathbf y^{(i)}=(y^{(i)}_{1},...,y^{(i)}_{n^{(i)}})$，模型预测的输出为$\mathbf z^{(i)}=(z^{(i)}_{1},...,z^{(i)}_{n^{(i)}})$，我们看一下不同标注方式下的ListNet模型的损失函数：
+​	通过Top1概率，给定一个真实标签的概率分布$\mathbf P_{\mathbf r}^{(i)}$和模型输出的概率分布$\mathbf P_{\mathbf s}^{(i)}$，我们就可以用一个度量分布的指标作为损失函数，这里笔者沿用论文中的符号，查询$q^{(i)}$对应的候选文档集合为$\mathbf d^{(i)}=\set{d^{(i)}_{1},...,d_{n^{(i)}}^{(i)}}$，查询$q^{(i)}$对应文档集合的人工标记相关性分数向量记作$\mathbf r^{(i)}=(r^{(i)}_{1},...,r^{(i)}_{n^{(i)}})$，模型预测的输出为$\mathbf s^{(i)}=(s^{(i)}_{1},...,s^{(i)}_{n^{(i)}})$，我们看一下ListNet模型的损失函数：
 
-![image-20250327155924152](assets\learning2rank\listwise-label.png)
+![image-20250709153714737](E:\Study\gitpro\knowledge-planet\NLP系列\assets\image-20250709153714737.png)
 
-​	**方式一**即上图的左半部分，假设在标注阶段的每一个文档的相关性分数都是确切的，专家关注每一篇文档的得分，查询$q^{(i)}$标签的概率分布记作$\mathbf P_{\mathbf y}^{(i)}=(P_{y^{(i)}}(1),...,P_{y^{(i)}}(n))^{\top}$，模型输出的概率分布记作$\mathbf P_{\mathbf z}^{(i)}=(P_{z^{(i)}}(1),...,P_{z^{(i)}}(n))^{\top}$，前者是目标分布，后者是真实分布，我们可以找一个度量分布的函数作为损失函数，KL散度。若采用KL散度作为损失，则$\operatorname{D}_{KL}(\mathbf P_{\mathbf y}^{(i)}||\mathbf P_{\mathbf z}^{(i)})$表达如下：
+​	假设在标注阶段的每一个文档的相关性分数都是确切的，查询$q^{(i)}$标签的概率分布记作$\mathbf P_{\mathbf r}^{(i)}=(P_{r^{(i)}}(1),...,P_{r^{(i)}}(n))^{\top}$，模型输出的概率分布记作$\mathbf P_{\mathbf s}^{(i)}=(P_{s^{(i)}}(1),...,P_{s^{(i)}}(n))^{\top}$，前者是目标分布，后者是真实分布，我们可以找一个度量分布的函数作为损失函数，KL散度。若采用KL散度作为损失，则$\operatorname{D}_{KL}(\mathbf P_{\mathbf r}^{(i)}||\mathbf P_{\mathbf s}^{(i)})$表达如下：
 $$
-\begin{aligned}\operatorname{D}_{KL}(\mathbf P_{\mathbf y}^{(i)}||\mathbf P_{\mathbf z}^{(i)})&=\sum_{k=1}^{n^{(i)}} P_{y^{(i)}}\log \frac{P_{y^{(i)}}}{P_{z^{(i)}}}\\
-&=C-\sum_{k=1}^{n^{(i)}} P_{y^{(i)}}\log {P_{z^{(i)}}}\\
-&=C+H(\mathbf P_{\mathbf y}^{(i)},\mathbf P_{\mathbf z}^{(i)})\end{aligned}
+\begin{aligned}\operatorname{D}_{KL}(\mathbf P_{\mathbf r}^{(i)}||\mathbf P_{\mathbf s}^{(i)})&=\sum_{k=1}^{n^{(i)}} P_{r^{(i)}}\log \frac{P_{r^{(i)}}}{P_{s^{(i)}}}\\
+&=C-\sum_{k=1}^{n^{(i)}} P_{r^{(i)}}\log {P_{s^{(i)}}}\\
+&=C+H(\mathbf P_{\mathbf r}^{(i)},\mathbf P_{\mathbf s}^{(i)})\end{aligned}
 $$
-​	由于标签是固定的，即$C$一直不变，采用KL散度作为损失函数等价于用交叉熵作为损失函数。所以ListNet的损失函数就是Cross Entropy Loss。ListMLE[[x]]()则采用了一个更加直接的方式，以真实的标签顺序排列作为目标，以极大似然估计的思想设计损失函数。
+​	由于标签是固定的，即$C$一直不变，采用KL散度作为损失函数等价于用交叉熵作为损失函数。所以ListNet的损失函数就是Cross Entropy Loss，即：
 $$
-xxxx
+\begin{aligned} \mathcal L_{\mathrm{ListNet}}&=-\sum_{k=1}^{K}P_{r_k}\log\sum_{k=1}^{K}\frac{\exp(s_k)}{\sum_{j=k}^{K}\exp(s_j)}\\
+&=-\sum_{k=1}^{K}\frac{r_k}{\sum_{j=1}^{K}r_j}\log\bigg(\sum_{k=1}^{K}\frac{\exp(s_k)}{\sum_{j=1}^{K}\exp(s_j)}\bigg)\end{aligned}
 $$
-假设有一个文档$\set{1,2,3,4}$的分数列表$\mathbf s=\set{4,2,3,1}$，则排序$\pi=\langle1,3,2,4\rangle$，直接优化该排列序列出现的概率，利用公式$()$​：
+​	ListMLE[[x]]()则采用了一个更加直接的方式，以真实的标签顺序排列作为目标，基于极大似然估计的思想设计损失函数，即让某个序列出现的概率最大，给定模型预测的分数向量$\mathbf s$，相关性标签$\mathbf r$，$\pi$是相关性标签从大到小排序，$\mathbf s_{\pi}$是模型预测分数按照相$\pi$进行排序后的向量，那么损失函数可以写作：
+$$
+\mathcal L_{\text{ListMLE}}=-\mathbb \log\prod_{k=1}^{K}\frac{\exp{s_{\pi(k)}}}{\sum_{j=k}^{K}\exp(s_{\pi(k)})}\tag{3-x}
+$$
+假设有一个文档$\set{1,2,3,4}$的分数列表$\mathbf s=\set{4,2,3,1}$，则排序$\pi=\langle1,3,2,4\rangle$，直接优化该排列序列出现的概率，利用公式$(3-x)$​：
 $$
 -\log P(\hat {\mathbf s})=-\log \frac{\exp (4)}{\exp (4)+\exp (2)+\exp (3)+\exp (1)}\frac{\exp (3)}{\exp (3)+\exp (2)+\exp (1)}\frac{\exp (2)}{\exp (2)+\exp (1)}
 $$
-​	然而，ListNet与ListMLE这类排序模型的优化目标与位置无关，用IR的衡量指标如$NDCG$来衡量排序好坏时有不一致的矛盾，如下案例[[x]](https://auai.org/uai2014/proceedings/individuals/164.pdf)能给出一个直观解释，假设真实的最优排序是$\mathbf y=(1,2,3,4,5)$，给定一个分数列表$\mathbf s_1=(\ln4,\ln5,\ln3,\ln2,\ln1)$和$\mathbf s_2=(\ln5,\ln4,\ln1,\ln2,\ln3)$，依据ListMLE的损失函数，则有：
+​	然而，$\text{ListNet}$与$\text{ListMLE}$这类排序模型的优化目标与位置无关，用IR的衡量指标如$NDCG$来衡量排序好坏时有不一致的矛盾，因此有学者通过引入位置因子解决这个问题，如$\text{P-ListMLE}$[[x]]()。
 
 
 
-​	NDCG这样的评估指标反映用户会更关注排序靠前的结果，因此排序列表中若错误地排错了靠前的物品会比错误排序靠后的物品更加严重，而ListMLE则无法捕捉这样的位置信息。 
-
-## 3.5 Bolztman Rank
-
-​	Bolztman Rank的思想与ListNet也类似，定义一个排序概率，考虑给定分数$\mathbf s$下目标性能度量的期望值，并将该期望作为优化指标，受统计物理学中玻尔兹曼分布的启发，给定分数列表$\mathbf S^{(f)}=\set{s_1,...,s_m}$和排序$\mathbf R=\set{r_1,...,r_m}$，Boltzman Rank先定义了一个给定$\mathbf s$下$R$出现的能量作为：
-$$
-E(R|\mathbf S)=\frac{2}{m(m-1)}\sum_{r_j>r_k}g_q(r_j-r_k)(s_j-s_k)
-$$
-​	其中$g_q$可以是任意的符号保持函数，顾名思义，是指 **在输入值正负不变的情况下，输出值的正负也保持不变的函数**。换句话说，如果输入的两个值的相对大小关系是确定的，那么它们经过该函数变换后的相对大小关系仍然保持不变。如$g_q(x)=a_qx$，其他的函数还有仿射函数$f(x)=kx+b$，指数函数$e^x$。从公式中我们可以知道，当$s_j\gt\gt s_k$时，说明$R$与$\mathbf s$不太匹配，会获得一个较大的能量，当$s_j<<s_k$时，则会获得比较少的能量。而在物理系统中，**较低的能量通常表示更稳定的状态**，较高的能量表示系统处于更不稳定、不自然的状态，系统会容易发生改变，因此，较低的能量说明$R$与$\mathbf s$​排序关系较为一致，反之则不匹配。利用能量函数，我们现在可以通过指数化和归一化来定义文档排列上的条件玻尔兹曼分布：
-$$
-\begin{aligned}P(\mathbf R|\mathbf S)=\frac{1}{Z(\mathbf S)}\exp{(-E(\mathbf R|\mathbf S))} \\
-Z(\mathbf S)=\sum_{\mathbf R} \exp{(-E(\mathbf R|\mathbf S))}\end{aligned}
-$$
-​	$\mathbf S$是神经网络的输出，即我们希望在给定网络预测$\mathbf S$的情况下，某个具体的排列$\mathbf R$出现的概率最大，但是$\mathbf R$出现的排列可能性是$m!$，因此分母项$\mathbf Z(\mathbf S)$只能近似计算。如SoftRank中近似计算$P(r_j=k)$，在SoftRank中文档$doc_j$被文档$doc_i$打败的概率为高斯分布：
-$$
-s_j\sim\mathcal N(\bar {s_i}-\bar{s_j},2\sigma_s^2)
-$$
-​	在Boltzman Rank中借用Bradley Terry模型定义文档$doc_j$被文档$doc_i$​打败的概率如下：
-$$
-\pi_{ij}=P(s_i>s_j)=\frac{\exp{(-k*s_i)}}{\exp{(-k*s_i)}+\exp{(-k*s_i)}}
-$$
-​	此外，Boltzman Rank认为打分函数$f$（神经网络）由两部分构成：（1）单点打分的函数$\phi$，无需考虑文档对之间的关系。（2）成对打分函数$\psi$。任何给定文档$d_j$的最终分数计算如下：
-$$
-f(d_j|q,D)=\phi(d_j)+\sum_{k,k\neq j}\psi(d_j,d_k)
-$$
-​	xxxx
-
-## 3.6 Neural Sort&Neural NDCG
+## 3.5 Neural Sort&Neural NDCG
 
 ​	在上述的ListWise形式的排序中，由于$NDCG$​指标的计算关于神经网络的输出是一个不可导的操作，因此不可直接优化，可以通过函数近似替代的方式或者与位置无关的损失函数来优化网络，那有没有研究是找到一个离散的排序的可导近似呢？——NeuralSort就是一种“连续松弛”，是排序操作的可导近似。
 
@@ -518,7 +498,7 @@ $$
 $$
 \lim _{\tau \rightarrow 0^{+}} \widehat{P}_{\operatorname{sort}(\mathbf{s})}[i,:](\tau)=\operatorname{softmax}\left[\left((n+1-2 i) \mathbf s-A_{\mathbf s} \mathbb{1}\right) / \tau\right] \quad \forall i \in\{1,2, \ldots, n\}
 $$
-​	$\hat P_{\operatorname{sort}(s)}(\tau)$在下文记作。为计算$\operatorname{DCG@}k$，我们要知道按照$\mathbf s$排序后对应的相关性分数$r_i$和增益$g_i$，因此有$\hat P g(\mathbf r)$，意思是相关性标签列表按照$\mathbf s$大小进行排序对应的增益。因此最原始情况下的$\operatorname{NeuralNDCG}@k(\tau)(\mathbf {s,r})$公式可以表达如下：
+​	$\hat P_{\operatorname{sort}(s)}(\tau)$在下文记作。为计算$\operatorname{DCG@}k$，我们要知道按照$\mathbf s$排序后对应的相关性分数标签$r_i$和增益$g_i$，因此有$\hat P g(\mathbf r)$，意思是相关性标签列表按照$\mathbf s$大小进行排序对应的增益。因此最原始情况下的$\operatorname{NeuralNDCG}@k(\tau)(\mathbf {s,r})$公式可以表达如下：
 $$
 \begin{aligned} \operatorname{NeuralNDCG}@k(\tau)(\mathbf {s,r})=\frac{\sum_{i=1}^{k}\big(\hat P g(\mathbf r)\big)_id(i)}{\operatorname{IDCG@}k}\end{aligned}
 $$
@@ -541,11 +521,7 @@ $$
 - 收敛阈值 $\epsilon$（如 $10^{-6}$）。
 
 **输出：**
-
 - 双随机矩阵 $S$，即行和与列和均约为1。
-
----
-
 **算法步骤：**
 
 1. **初始化：**
@@ -590,17 +566,13 @@ $$
 
 ​	预训练——有监督微调——人类反馈强化学习是打造一个高性能大语言模型的标准步骤。在对齐阶段，目前的RLHF技术如PPO在训练时不够稳定，且对计算资源要求高，为此，$\text{DPO}$技术应运而生，$\text{DPO}$的思想是将$\text{RLHF}$中显示的奖励函数转化到统一的有监督损失中，使得模型可以通过有监督的方式微调参数，在给定偏好数据（人类专家对同一输入不同输出的优劣判断）的情况下，直接学习生成更优的输出，从而绕过传统$\mathrm{RLHF}$​中复杂且不稳定的策略优化过程。
 
-​	在实际工作中，大部分的时间都是与收集与清洗数据的工作打交道，高质量的数据对提升模型下游任务性能有最直接的影响，且模型与策略层面的改动相对来说较少。因此，本文将从数据策略的维度介绍DPO，并从Learning to Rank 的视角解析DPO。站在数据策略的角度，DPO可以分成数据质量(Data Quality)、偏好反馈(Preference Feedback)、偏好细粒度(Preference Granularity)三个层面[[x]](https://arxiv.org/abs/2503.11701)。
+​	在实际工作中，大部分的时间都是与收集与清洗数据的工作打交道，高质量的数据对提升模型下游任务性能有最直接的影响，且模型与策略层面的改动相对来说较少。因此，本文将从数据策略的维度介绍DPO，并从Learning to Rank 的视角解析DPO。站在数据策略的角度，DPO可以分成数据质量(Data Quality)、偏好反馈(Preference Feedback)、偏好细粒度(Preference Granularity)三个层面[[x]](https://arxiv.org/abs/2503.11701)，本文将先介绍偏好反馈一节，将其与信息检索领域技术关联。
 
-## 4.1 Data Quality
+## 4.1 Preference Feedback
 
-​	
+​	偏好反馈指的可以分为$\mathrm{PointWise}$反馈、$\mathrm{PairWise}$反馈和$\mathrm{ListWise}$反馈三类。与$\text{Ranking}$问题一样，PointWise反馈独立评估每个回答的好坏，往往视作一个回归或分类问题，为其打分或标注为正面或负面；PairWise反馈通过构造成对的偏序关系比较两两之间的好坏；而ListWise反馈则考虑了整个文档内的好坏关系，本文着重介绍成对反馈与列表级反馈。
 
-## 4.2 Preference Feedback
-
-​	偏好反馈指的可以分为$\mathrm{PointWise}$反馈、$\mathrm{PairWise}$反馈和$\mathrm{ListWise}$反馈三类。与$\text{Ranking}$问题一样，PointWise反馈独立评估每个回答的好坏，往往视作一个回归或分类问题，为其打分或标注为正面或负面；PairWise反馈通过构造成对的偏序关系比较两两之间的好坏；而ListWise反馈则考虑了整个文档内的好坏关系。
-
-### 4.2.1 Pair-Wise Feedback
+### 4.1.1 Pair-Wise Feedback
 
 ​	成对反馈侧重于比较成对问答的偏序关系，即给定上下文历史$x_i$，和不同的回复$y^{(i)}_j$,$y^{(i)}_k$。判断回答的相对好坏，即$(x_i,y^{(i)}_j)?(x_i,y^{(i)}_k)$。**Rafailov**&**Sharma**等人提出的DPO用$\text{Bradley-Terry}$模型建模偏好的回复$y_1$大于另一个回复的$y_2$概率，即：
 $$
@@ -629,9 +601,7 @@ $$
 &=(1-\sigma(A-B))*\beta(\frac{\pi_{\text{ref}}(y_c|x)}{\pi^*(y_c|x)}*\frac{\partial\pi^*(y_c|x)}{\partial w_k}-\frac{\pi_{\text{ref}}(y_r|x)}{\pi^*(y_r|x)}*\frac{\partial\pi^*(y_r|x)}{\partial w_k})\end{aligned}
 $$
 
-​	因此从梯度的角度看，rejected reward的梯度是占据主导地位的，由于损失函数的设计使得模型在优化时无法直接提升chosen reward的绝对几率，因此rejected reward若迅速降低，chosen reward存在不提升，但是慢慢降低的情况，此使使得模型输出的chosen reward仍然大于rejected reward，但是chosen reward的降低会使得模型在训练时逐渐变得不再输出人类偏好的token，训练完的模型会胡说八道，因此在训练过程中需要调整超参数或者引入额外损失等手段解决这个问题，如引入有监督阶段的SFT损失函数，提升模型输出chosen token的概率（DeepSpeed-Chat的RLHF阶段在ppo过程中可以选择性添加预训练阶段任务，即一边ppo让模型的收益增大，一边防止模型能力跑偏，因此在DPO时引入SFT的损失也是可行的手段之一）。
-
-​	SimPOxxxxxx
+​	因此从梯度的角度看，rejected reward的梯度是占据主导地位的，由于损失函数的设计使得模型在优化时无法直接提升chosen reward，因此rejected reward若迅速降低，chosen reward存在不提升，但是慢慢降低的情况，此使使得模型输出的chosen reward仍然大于rejected reward，但是chosen reward的降低会使得模型在训练时逐渐变得不再输出人类偏好的token，训练完的模型会胡说八道，因此在训练过程中需要调整超参数或者引入额外损失等手段解决这个问题，如引入有监督阶段的SFT损失函数，提升模型输出chosen token的概率（DeepSpeed-Chat的RLHF阶段在ppo过程中可以选择性添加预训练阶段任务，即一边ppo让模型的收益增大，一边防止模型能力跑偏，因此在DPO时引入SFT的损失也是可行的手段之一）。
 
 ​	DPO运用了Bradley Terry模型建模不同偏好回复的胜负概率，当成对标注出现$y_j=y_k$时，Bradley Terry模型无法准确建模，成对比较出现打平的情况是十分常见的，如在CBT-Bench中可以看到不同模型和参考答案比较时二者打平的情况其实不在少数，那么如何解决成对比较打平的问题?——引入新的比较模型或是借鉴Learing to Rank的策略。前者的方式是将Bradley Terry 模型替换成可以建模平均概率的$\text{Rao-Kupper }$模型与$\text{Davidson}$模型[[x]](https://arxiv.org/pdf/2409.17431)。本文仅以$\text{Rao-Kupper }$模型为例:
 $$
@@ -652,36 +622,47 @@ $$
 
 ### 4.1.2 List-Wise Feedback
 
-​	ListWise形式的反馈将考虑多个候选回答间的整体关系，即多个回答间的相对顺序。上一小节我们发现了DPO实际上可以看作是在排序学习，那么，在List-Wise FeedBack中我们同样可以引入传统的learning to rank策略，如像$\mathrm{ListMLE}$一样直接优化排序出现的似然，即给定模型预测的分数向量$\mathbf s$，按照真实顺序$\pi$排序后得到$\mathbf s_{\pi}$，$s_{\pi(k)}$是$\mathbf s_{\pi}$的第$k$个分量，也是第$k$大的元素，那么损失函数可以写作：
+​	列表级反馈将考虑多个候选回答间的整体关系，即多个回答间的相对顺序。上一小节我们发现了DPO实际上可以看作是在排序学习，那么，在List-Wise FeedBack中我们同样可以引入传统的learning to rank策略，如像$\mathrm{ListMLE}$一样直接优化排序出现的似然，即给定模型预测的分数向量$\mathbf s$，按照$\mathbf s$排序得到的置换向量是$\pi$排序后得到$\mathbf s_{\pi}$，$s_{\pi(k)}$是$\mathbf s_{\pi}$的第$k$个分量，也是第$k$大的元素，那么损失函数可以写作：
 $$
 \begin{aligned} \mathcal L_{\mathrm{ListMLE}}=-\mathbb E_{x,\mathbf y\sim\mathcal D}\big[\log\prod_{k=1}^{K}\frac{\exp{s_{\pi(k)}}}{\sum_{j=k}^{K}\exp(s_{\pi(k)})}\big]\end{aligned}
 $$
-​	同样，$\mathrm{ListNet}$损失函数也能用于$\mathrm{DPO}$，给定真实的相关性标签$\mathbf \psi=(\psi_1,\ldots,\psi_K)$，模型预测的分数向量$\mathbf s$，损失函数可以写成：
+​	同样，$\mathrm{ListNet}$损失函数也能用于$\mathrm{DPO}$，给定真实的相关性标签$\mathbf r=(r_1,\ldots,r_K)$，模型预测的分数向量$\mathbf s$，损失函数可以写成：
 $$
-\begin{aligned} \mathcal L_{\mathrm{ListMLE}}&=-\mathbb E_{x,\mathbf y,\psi\sim\mathcal D}\big[\sum_{k=1}^{K}P_{\psi_k}\log\sum_{k=1}^{K}\frac{\exp(s_k)}{\sum_{j=k}^{K}\exp(s_j)}\big]\\
-&=-\mathbb E_{x,\mathbf y,\psi\sim\mathcal D}\big[\sum_{k=1}^{K}\frac{\psi_k}{\sum_{j=1}^{K}\psi_jk}\log\bigg(\sum_{k=1}^{K}\frac{\exp(s_k)}{\sum_{j=1}^{K}\exp(s_j)}\bigg)\big]\end{aligned}
+\begin{aligned} \mathcal L_{\mathrm{ListNet}}&=-\mathbb E_{x,\mathbf y,\psi\sim\mathcal D}\big[\sum_{k=1}^{K}P_{r_k}\log\sum_{k=1}^{K}\frac{\exp(s_k)}{\sum_{j=k}^{K}\exp(s_j)}\big]\\
+&=-\mathbb E_{x,\mathbf y,\psi\sim\mathcal D}\big[\sum_{k=1}^{K}\frac{r_k}{\sum_{j=1}^{K}r_j}\log\bigg(\sum_{k=1}^{K}\frac{\exp(s_k)}{\sum_{j=1}^{K}\exp(s_j)}\bigg)\big]\end{aligned}
 $$
 ​	$\text{LiPO-}\lambda$[[x]]()直接定义$\lambda$梯度，得到优化目标如下：
 $$
 \mathbb{E}_{x, \mathbf{y}, \psi \sim \mathcal{D}}\left[\sum_{\psi_{i}>\psi_{j}} \Delta_{i, j} \log \left(1+e^{-\left(s_{i}-s_{j}\right)}\right)\right],
 $$
 
+​	其中$\Delta_{ij}$公式如下：
+$$
+\begin{aligned}\Delta_{i, j}=\left|G_{i}-G_{j}\right| \cdot\left|\frac{1}{D(\pi(i))}-\frac{1}{D(\pi(j))}\right|\end{aligned}
+$$
+​	$G_i=2^{\psi_i}-1$是文档的增益，$D(\pi(i))=\log(1+\pi(i))$是折扣因子，$\pi(i)$是按照分数$\mathbf s$排序后文档$y_i$的位置。至此，不难发现DPO可以无缝融入各种各样的排序损失 ，上文第三章中提到的$\mathrm{NeuralNDCG}$同样也可以用于DPO，zhao等人提出的$\mathrm{OPO}$[[x]](https://arxiv.org/pdf/2410.04346)便是基于这个思想，借用公式(3-x)，$\mathrm{OPO}$的优化目标可以写成：
+$$
+\begin{aligned} \begin{aligned} \operatorname{NeuralNDCG}@k(\tau)(\mathbf {s,r})=\mathbb E_{x,\mathbf y,\mathbf r\sim \mathcal D}\bigg[\frac{\sum_{i=1}^{k}\big(S g(\mathbf r)\big)_id(i)}{\operatorname{IDCG@}k}\bigg]\end{aligned}\end{aligned}
+$$
+​	$\mathrm{OPO}$列举了不同反馈标注形式下的工作、类型及优化目标，如下图：
 
-## 4.3 Preference Granularity
+![image-20250709143803491](assets\image-20250709143803491.png)
 
+​	此外，$\mathrm{OPO}$基于$\text{UltraFeedback}$和$\text{SimPO}$构建了一个有序奖励的数据集，并通过实验结果表明使用多样化的负样本比仅使用最低质量的回答作为负样本更能够提升模型性能。
 
+```未完待续```
 
 # 5.参考文献
 
-[[1]]()
+[[1]Burges,Shaked,Renshaw.Learning to Rank using Gradient Descent[C]. Proceedings of the 22 nd International Conference on Machine Learning, Bonn, Germany, 2005.](https://icml.cc/Conferences/2015/wp-content/uploads/2015/06/icml_ranking.pdf)
 
-[[2]]()
+[[2]C.Burges.From RankNet to LambdaRank to LambdaMart:An Overview[EB/OL].Microsoft Research Technical Report MSR-TR-2010-82.](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/MSR-TR-2010-82.pdf)
 
-[[3]]()
+[[3]Taylor,Guiver,Robertson,et al.SoftRank: Optimising Non-Smooth Rank Metrics,SIGIR LETOR Workshop ’07,Amsterdam, Netherlands.](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/SoftRankWsdm08Submitted.pdf)
 
 [[4]]()
 
-[[5]J.C.Burges.From RankNet to LambdaRank to LambdaMart:An Overview[EB/OL].Microsoft Research Technical Report MSR-TR-2010-82.](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/MSR-TR-2010-82.pdf)
+[[5]J.]()
 
 [[6]Grover,Wang,Zweig,et al.Stochastic Optimization of Sorting Networks via Continuous Relexations[J].International Conference on Learning Representations,2019.](https://arxiv.org/abs/1903.08850)
 
@@ -693,6 +674,6 @@ $$
 
 [[x]Liu,Qin,Wu,et al.LiPO: Listwise Preference Optimization through Learning-to-Rank](https://arxiv.org/pdf/2402.01878)
 
-[[x]Zhao,Wang,Yin,et al.Ordinal Preference Optimization: Aligning Human Preferences via NDCG]()
+[[x]Zhao,Wang,Yin,et al.Ordinal Preference Optimization: Aligning Human Preferences via NDCG](https://arxiv.org/pdf/2410.04346)
 
-[[x]**LLM Alignment as Retriever Optimization: An Information Retrieval Perspective**](https://arxiv.org/abs/2502.03699)
+[[x]LLM Alignment as Retriever Optimization: An Information Retrieval Perspective](https://arxiv.org/abs/2502.03699)
