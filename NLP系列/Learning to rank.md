@@ -477,7 +477,7 @@ $$
 
 > **对于一个新的样本点，找到训练集中离它最近的 k 个点，然后通过这些点的标签来“投票”或“平均”，决定它的输出。**
 
-​	假设一个分类任务，给定训练样本和对应的标签$\mathcal D=\{(\mathbf x_1,y_1),(\mathbf x_2,y_2),...,(\mathbf x_n,y_n)\}$，要预测新的样本$\mathbf x_{\text{new}}$属于哪一个类别，那么只需判断该新样本距离最近的$k$个（$k$是超参数）距离$d$对应的训练数据的类别，再透过投票来决定该样本所述的类别即可。距离$d$可以是欧氏距离、余弦相似度、曼哈顿距离等。具体地，选取一个查询样本$\mathbf {(x_0,y_0)}$，随机选取$n$个样本作为其候选邻居$ {(\mathbf x_1,y_1),\ldots ,(\mathbf x_n,y_n)}$，然后神经网络会学到一个映射表示$h_{\phi}(\cdot)$，将输入编码成高维语义向量，即$h_{\phi}(\mathbf x_i)^{\top}\in\mathbb R^{h\times 1}$，然后计算查询样本和候选样本在语义空间中的度量：
+​	假设一个分类任务，给定训练样本和对应的标签$\mathcal D=\{(\mathbf x_1,y_1),(\mathbf x_2,y_2),...,(\mathbf x_n,y_n)\}$，要预测新的样本$\mathbf x_{\text{new}}$属于哪一个类别，那么只需判断该新样本距离最近的$k$个（$k$是超参数）距离$d$对应的训练数据的类别，再透过投票来决定该样本所述的类别即可。距离$d$可以是欧氏距离、余弦相似度、曼哈顿距离等。具体地，选取一个查询样本$(\mathbf {x_0},y_0)$，随机选取$n$个样本作为其候选邻居${(\mathbf x_1,y_1),\ldots}$,${(\mathbf x_n,y_n)}$，然后神经网络会学到一个映射表示$h_{\phi}(\cdot)$，将输入编码成高维语义向量，即$h_{\phi}(\mathbf x_i)^{\top}\in\mathbb R^{h\times 1}$，然后计算查询样本和候选样本在语义空间中的度量：
 $$
 \mathbf s_j=|| h_{\phi}(\mathbf x_0) -h_{\phi}(\mathbf x_j)||^2_2,j=1,\ldots,n
 $$
@@ -566,15 +566,15 @@ $$
 
 ​	预训练——有监督微调——人类反馈强化学习是打造一个高性能大语言模型的标准步骤。在对齐阶段，目前的RLHF技术如PPO在训练时不够稳定，且对计算资源要求高，为此，$\text{DPO}$技术应运而生，$\text{DPO}$的思想是将$\text{RLHF}$中显示的奖励函数转化到统一的有监督损失中，使得模型可以通过有监督的方式微调参数，在给定偏好数据（人类专家对同一输入不同输出的优劣判断）的情况下，直接学习生成更优的输出，从而绕过传统$\mathrm{RLHF}$​中复杂且不稳定的策略优化过程。
 
-​	在实际工作中，大部分的时间都是与收集与清洗数据的工作打交道，高质量的数据对提升模型下游任务性能有最直接的影响，且模型与策略层面的改动相对来说较少。因此，本文将从数据策略的维度介绍DPO，并从Learning to Rank 的视角解析DPO。站在数据策略的角度，DPO可以分成数据质量(Data Quality)、偏好反馈(Preference Feedback)、偏好细粒度(Preference Granularity)三个层面[[x]](https://arxiv.org/abs/2503.11701)，本文将先介绍偏好反馈一节，将其与信息检索领域技术关联。
+​	在实际工作中，大部分的时间都是与收集与清洗数据的工作打交道，高质量的数据对提升模型下游任务性能有最直接的影响，且模型与策略层面的改动相对来说较少。因此，本文将从数据策略的维度介绍DPO，并从Learning to Rank 的视角解析DPO。站在数据策略的角度，DPO可以分成数据质量(Data Quality)、偏好反馈(Preference Feedback)、偏好细粒度(Preference Granularity)三个层面[[x]](https://arxiv.org/abs/2503.11701)，本文将先介绍偏好反馈与信息检索领域的技术关联。
 
 ## 4.1 Preference Feedback
 
-​	偏好反馈指的可以分为$\mathrm{PointWise}$反馈、$\mathrm{PairWise}$反馈和$\mathrm{ListWise}$反馈三类。与$\text{Ranking}$问题一样，PointWise反馈独立评估每个回答的好坏，往往视作一个回归或分类问题，为其打分或标注为正面或负面；PairWise反馈通过构造成对的偏序关系比较两两之间的好坏；而ListWise反馈则考虑了整个文档内的好坏关系，本文着重介绍成对反馈与列表级反馈。
+​	偏好反馈指的可以分为$\mathrm{PointWise}$反馈、$\mathrm{PairWise}$反馈和$\mathrm{ListWise}$反馈三类。与$\text{Ranking}$问题一样，$\mathrm{PointWise}$反馈独立评估每个回答的好坏，往往视作一个回归或分类问题，为其打分或标注为正面或负面；$\mathrm{PairWise}$反馈通过构造成对的偏序关系比较两两之间的好坏；而$\mathrm{ListWise}$反馈则考虑了整个文档内的好坏关系，本文着重介绍成对反馈与列表级反馈。
 
 ### 4.1.1 Pair-Wise Feedback
 
-​	成对反馈侧重于比较成对问答的偏序关系，即给定上下文历史$x_i$，和不同的回复$y^{(i)}_j$,$y^{(i)}_k$。判断回答的相对好坏，即$(x_i,y^{(i)}_j)?(x_i,y^{(i)}_k)$。**Rafailov**&**Sharma**等人提出的DPO用$\text{Bradley-Terry}$模型建模偏好的回复$y_1$大于另一个回复的$y_2$概率，即：
+​	成对反馈侧重于比较成对问答的偏序关系，即给定上下文历史$x_i$，和不同的回复$y^{(i)}_j$,$y^{(i)}_k$。判断回答的相对好坏，即$(x_i,y^{(i)}_j)?(x_i,y^{(i)}_k)$。**Rafailov**&**Sharma**[[x]]()等人提出的DPO用$\text{Bradley-Terry}$模型建模偏好的回复$y_1$大于另一个回复的$y_2$概率，即：
 $$
 \begin{aligned}p^*(y_1\succ y_2)&=\sigma(r(x,y_1)-r(x,y_2))\\
 &=\frac{1}{1+\exp{\bigg(\beta\log{\frac{\pi^*(y_2|x)}{\pi_{\text{ref}}(y_2|x)}}-\beta\log{\frac{\pi^*(y_1|x)}{\pi_{\text{ref}}(y_1|x)}}\bigg)}}\end{aligned}
@@ -677,6 +677,8 @@ $$
 [[x]Gumbel Max]()
 
 [[x]A Survey of Direct Preference Optimization](https://arxiv.org/abs/2503.11701)
+
+[[x]]()
 
 [[x]akaihaoshuai.基于Qwen3的DPO/KTO/ORPO/Simpo经验总结[EB/OL].(2025-06-09)-[2025-07-07].](https://zhuanlan.zhihu.com/p/1907949654739513685)
 
