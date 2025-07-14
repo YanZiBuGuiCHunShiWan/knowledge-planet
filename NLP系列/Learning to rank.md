@@ -6,7 +6,7 @@
 
 ​	Point-Wise Ranking 是学习排序的一类方法，它把排序任务视为 **回归或分类问题**。因此通常采样$\text{BCE Loss}$或者$\text{Focal Loss}$作为策略，以文档排序的场景为例，我们用BERT作为Cross Encoder捕获查询和文档间细粒度的语义交互，给定一个查询$query_i$、相关的文档$doc_i^+$（这里笔者假定只有一个相关文档，实际上可以有多个）和对应的$m$个候选文档$doc_{ij}^-,j=1,\ldots,m$，将$query_i$和对应的文档通过特殊符号$\text{[CLS][SEP]}$拼接后作为BERT的输入，由可训练的线性层$\mathbf W$映射后再经过$\operatorname{sigmoid}$函数得到对应的分数$s_i$，对于正样本的得分$s_i$，应该越接近$1$越好，对于负样本得分$s_j$，应该越接近$0$越好。如下图：
 
-![image-20250701180409168](assets\image-20250701180409168.png)
+![image-20250701180409168](assets/image-20250701180409168.png)
 
 ​	Point-Wise 把排序问题当作 **独立的回归或分类任务** 来做，预测每个样本的分值或概率。但排序真正关心的是 **文档之间的相对顺序**（比如NDCG、MAP、MRR 等），Point-Wise 并没有直接针对这些指标优化，因此即便模型预测的分值接近真实分值，也可能导致最终的排序顺序完全错误。此外，Point-Wise损失函数通常不能反映“局部排序错误”的严重程度，如把排名第$1$的文档得分预测稍低一些，导致其拍到了后几位，损失函数依然非常小，但是上线后用户体验和位置有关的衡量指标都很差。如果训练集中有大量负样本，模型可能只学会输出低分来降低损失，即便是类别加权的损失也难以将模型改进到正常水平。
 
@@ -40,7 +40,7 @@ $$
 $$
 ​	$\sigma=1$时的损失函数图像如下（自变量为$s_i-s_j$）：
 
-![image-20250702163213780](assets\image-20250702163213780.png)
+![image-20250702163213780](assets/image-20250702163213780.png)
 
 ​	假设$s_i=\mathbf x_i^{\top}\mathbf w,s_j=\mathbf x_i^{\top}\mathbf w$，$\mathbf w\in \mathbf R^{h\times 1}$我们可以看一参数更新公式，以$w_k$（$\mathbf w$的第$k$个分量）为例：
 $$
@@ -91,7 +91,7 @@ $$
 $$
 ​	意思是对于某个文档$doc_i$，先找到相关性不如它的那些文档$doc_j$，此时可以算出一个向上的叠加的推力即$\begin{aligned}\sum_{j:\{i,j\}\in I}\lambda_{ij}\end{aligned}$，同时也会有其他相关性比$doc_i$高的文档，此时$doc_i$上会有一个向下的叠加的拉力即$\begin{aligned}-\sum_{j:\{j,i\}\in I}\lambda_{ji}\end{aligned}$。更直观一点，给定$5$个文档，假定关系如下：
 
-![image-20250703105259182](assets\image-20250703105259182.png)
+![image-20250703105259182](assets/image-20250703105259182.png)
 
 ​	那么针对每一个文档$doc_i$，需要计算的$\lambda_{ij}$、$\lambda_{ji}$与$\frac{\partial s_i}{\partial w_k}$如下表：
 
@@ -172,7 +172,7 @@ $$
 $$
 \begin{aligned} \pi_{ij} :=  \operatorname{Pr}(S_i-S_j>0)=\int_{0}^{\infin} \mathcal N(s|\bar {s_i}-\bar{s_j},2\sigma_s^2) \operatorname {d}s \end{aligned}
 $$
-![image-20250325182632385](assets\learning2rank\Gaussian-area.png)	
+![image-20250325182632385](assets/learning2rank/Gaussian-area.png)	
 
 ​	我们可以基于成对比较的方式来近似排序，其背后直觉如下：如果文档$doc_j$的排名比较靠后，说明其和其他文档在对比时都被打败了，具体地：假设共计$5$个文档，$doc_2$的排名为$4$（从$0$开始排），说明$doc_2$在和其他四个比较时都被打败了，如果其他文档$doc_j$打败$doc_2$的概率较大，则说明$\pi_{i2},i\neq2$较大，当$\bar{s_i}-\bar{s_2}$较大时高斯分布大于$0$部分的面积接近$1$，此时有$r_{doc_2}=4\approx \sum_{i=1,i\neq 2}\pi_{i2}$。因此任意文档$j$的排序$r_j$的期望可以表示如下：
 $$
@@ -197,7 +197,7 @@ P(r_j=k)=\sum_{\substack{E\subseteq\{1,2,...,N\} \setminus \{j\}\\|E|=K}}^{}\big
 $$
 ​	该概率质量函数虽然是解析式，但计算时需遍历子集，属于“非封闭形式”（因涉及到组合爆炸）。通常我们需要迭代进行求解，现在来思考一下不同视角下的$P(r_j=k)$的表达方式，从一开始，假设只有一个文档$doc_j$，那么第一次排序其排在位置$0$的概率必然是$1$，现在有第二个文档$doc_i,i\neq j$进来，我们需要确认文档$doc_j$排在$0$还是$1$，这种情况下如果$doc_j$仍然排在$0$的概率是$1-\pi_{ij}$，排在$1$的概率是从$0$位置跌落一名$\pi_{ij}$。假设有第三篇文档进来，则文档$doc_j$的位置排名只可能出现排序不变及往下跌落一位的情况，不可能上升，如果我们将文档$doc_j$的排序位置视作一个状态，则这个状态只与前一个状态有关，且只可能保持不变或者由前一个状态转移到下一个相邻的状态（第$3$个时刻的位置$3$只能转移到第四个时刻的位置$3$或者位置$4$，不可能转移到位置$2$或位置$5$），整体情况如下图所示：
 
-![image-20250326165450215](assets\learning2rank\position-transition.png)
+![image-20250326165450215](assets/learning2rank/position-transition.png)
 
 ​	用一个类似于状态转移矩阵的方式刻画（图中灰色圆圈代表文档处于该位置的概率为0），将$P^{(i)}_j(r=k)$记作排序$i,i=1,..j-1,j+1..,N$篇文档时，文档$doc_j$排在位置$k$的概率，则我们可以写一个递推公式：
 $$
@@ -245,7 +245,7 @@ $$
 
 形式上更加直观，直接通过$h_{ju}$控制文档$j$在位置$u$处分配的收益。此外，$\text{SmoothRank}$认为直接用指示函数之和近似位置的问题在于折扣函数形状失真，在排名靠后的位置上体现比较明显，位置折扣函数图像如下：
 
-![SmoothRank](assets\SmoothRank.png)
+![SmoothRank](assets/learning2rank/SmoothRank.png)
 
 ​	从图像中可以看到，如果$r$比较小时，随便波动带来的误差较大，当$r$比较大时，对误差的波动就相对没那么敏感了。即折扣函数对排名靠前的位置更敏感，而对靠后位置的贡献衰减较慢但变化幅度较小。因此直接近似位置可能导致在文档数量较多时误差累积增大，显著改变整体$\text{DCG@}k$的值。而$\text{DCG}_{\max}^{-1}$是一个常数，和神经网路具体预测的值无关，可以预先计算，因此加不加上并不影响优化目标。
 
@@ -278,7 +278,7 @@ $$
 
 ​	通过Top1概率，给定一个真实标签的概率分布$\mathbf P_{\mathbf r}^{(i)}$和模型输出的概率分布$\mathbf P_{\mathbf s}^{(i)}$，我们就可以用一个度量分布的指标作为损失函数，这里笔者沿用论文中的符号，查询$q^{(i)}$对应的候选文档集合为$\mathbf d^{(i)}=\set{d^{(i)}_{1},...,d_{n^{(i)}}^{(i)}}$，查询$q^{(i)}$对应文档集合的人工标记相关性分数向量记作$\mathbf r^{(i)}=(r^{(i)}_{1},...,r^{(i)}_{n^{(i)}})$，模型预测的输出为$\mathbf s^{(i)}=(s^{(i)}_{1},...,s^{(i)}_{n^{(i)}})$，我们看一下ListNet模型的损失函数：
 
-![image-20250709153714737](E:\Study\gitpro\knowledge-planet\NLP系列\assets\image-20250709153714737.png)
+![image-20250709153714737](assets/image-20250709153714737.png)
 
 ​	假设在标注阶段的每一个文档的相关性分数都是确切的，查询$q^{(i)}$标签的概率分布记作$\mathbf P_{\mathbf r}^{(i)}=(P_{r^{(i)}}(1),...,P_{r^{(i)}}(n))^{\top}$，模型输出的概率分布记作$\mathbf P_{\mathbf s}^{(i)}=(P_{s^{(i)}}(1),...,P_{s^{(i)}}(n))^{\top}$，前者是目标分布，后者是真实分布，我们可以找一个度量分布的函数作为损失函数，KL散度。若采用KL散度作为损失，则$\operatorname{D}_{KL}(\mathbf P_{\mathbf r}^{(i)}||\mathbf P_{\mathbf s}^{(i)})$表达如下：
 $$
@@ -372,7 +372,7 @@ $$
 $$
 ​	我们会发现这是一个差分$\min$运算，会让优化问题变得复杂，不便于接下来的推导。为此，我们必须想一种方式让优化目标只有一个$\min$。等式$\sum_{i=1}^{k} \mathbf s_{[i]}=\lambda k+\sum_{i=1}^{n} \mathbf \max(s_{i}-\lambda,0)$的成立条件是$\mathbf s_{[k]}\leq \lambda \leq \mathbf s_{[k+1]}$，我们思考是否可以再构造一个优化目标使得$\mathbf s_{[k-1]}\leq \lambda \leq \mathbf s_{[k]}，$这样就可以通过夹逼的方式强迫$\lambda=\mathbf s_{[k]}$，优化$\lambda$使得目标最小就得到了最终的$\mathbf s_{[k]}$。换个角度想，前$k$大其实等价于后$n-k+1$小，如果将$\mathbf s$取负即令$\mathbf t=-\mathbf s$，则$\mathbf t$的前$n-k+1$大等价于$\mathbf s$的后$n-k+1$小等价于$\mathbf s$的前$k$​大。如下是一个直观的例子：
 
-![image-20250620110756812](assets\learning2rank\reverse-index.png)
+![image-20250620110756812](assets/learning2rank/reverse-index.png)
 
 ​	因此可以同样使用引理2把$\mathbf t$的前$n-k+1$大的和写成：
 $$
@@ -679,7 +679,7 @@ $$
 $$
 ​	$\mathrm{OPO}$列举了不同反馈标注形式下的工作、类型及优化目标，如下图：
 
-![image-20250709143803491](assets\image-20250709143803491.png)
+![image-20250709143803491](assets/image-20250709143803491.png)
 
 ​	此外，$\mathrm{OPO}$基于$\text{UltraFeedback}$和$\text{SimPO}$构建了一个有序奖励的数据集，并通过实验结果表明使用多样化的负样本比仅使用最低质量的回答作为负样本更能够提升模型性能。
 
