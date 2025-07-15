@@ -2,9 +2,9 @@
 
 # **LLM-Agents**
 
-​		随着大语言模型的兴起，AI Agent这一词也随之变得火热，实际上AI Agent已经经历了几个阶段的演变。我们可以先进行一下简短的回顾：
+​	随着大语言模型的兴起，AI Agent这一词也随之变得火热，实际上AI Agent已经经历了几个阶段的演变。我们可以先进行一下简短的回顾：
 
-​		$\text{Symbolic Agents:}$在人工智能研究早期阶段，Symbolic AI 占据了主导地位，其特点是依赖于符号性的逻辑。早期的AI Agents主要关注两类问题： 1.transduction problem 2. respresentation/reasoning problem。这些Agents旨在模拟人类思考的方式，并且用于解决问题有明确的推理框架和可解释性。一个经典的例子就是专家系统，但是这类AgentsAgents的缺陷也很明显， 符号主义在处理不确定性和大量现实世界问题时仍有局限性，此外，符号推理赛算法复杂性高，想要平衡其时间效率和性能具有十足挑战性。
+​	$\text{Symbolic Agents:}$在人工智能研究早期阶段，Symbolic AI 占据了主导地位，其特点是依赖于符号性的逻辑。早期的AI Agents主要关注两类问题： 1.transduction problem 2. respresentation/reasoning problem。这些Agents旨在模拟人类思考的方式，并且用于解决问题有明确的推理框架和可解释性。一个经典的例子就是专家系统，但是这类AgentsAgents的缺陷也很明显， 符号主义在处理不确定性和大量现实世界问题时仍有局限性，此外，符号推理赛算法复杂性高，想要平衡其时间效率和性能具有十足挑战性。
 
   $\text{Reinforcement learning-based agents}$在强化学习（RL）的早期阶段，智能体主要依靠一些基础技术来进行学习，比如策略搜索和价值函数优化。其中，Q-learning和SARSA是比较著名的方法。 但是，随着深度学习技术的快速发展，我们将深度神经网络与强化学习相结合，形成了一种新的学习范式——深度强化学习（DRL）。这种结合让智能体能够从海量的高维数据中学习到复杂的策略，也带来了许多突破性的成果，比如AlphaGo和DQN。深度强化学习的强大之处在于，它让智能体能够在未知的环境中自主地进行学习，而不需要人类的干预或提供明确的指导。这种自主学习的能力，是AI领域的一大飞跃，也是未来智能体能够更好地适应复杂多变环境的关键。
 
@@ -20,7 +20,7 @@
 
 - **Tool Use.** 当人们感知周围环境时，大脑会整合信息，进行推理和决策。人们通过神经系统控制身体，以适应或创造性行动，如聊天、避开障碍物或生火。 如果智能体拥有类似大脑的结构，具备知识、记忆、推理、规划和概括能力，以及多模式感知能力，那么它也被期望能够以各种方式对周围环境做出反应。而基于LLM的智能体的动作模块负责接收来自大脑模块的动作指令，并执行与环境互动的动作。 LLM收到指令再输出文本是其固有的能力，因此我们后继主要讨论其工具使用能力，也就是所谓的Tool Use。
 
-![agent_framwork](src\AI-Agents\agent_framwork.jpg)
+![1](assets/AI-Agents/Agent-Framework.png)
 
 <center>*图 1: 基于LLM的智能体框架。*</center>
 
@@ -53,7 +53,7 @@ Q: transformer, language, vision
 A:
 ```
 
-![least2most](src\AI-Agents\least2most.png)
+![Least2Most](assets/AI-Agents/Least2Most.png)
 
 <center>*图 2: least to most 输出。*</center>
 
@@ -84,17 +84,17 @@ Thought: I now know the final answer
 Final Answer: the final answer to the original input question
 ~~~
 
-![ReAct](src\AI-Agents\ReAct.png)
+![2](assets/AI-Agents/ReAct.png)
 
 <center>*图 3: ReAct输出。*</center>
 
 ​	Reflecxion[[7]](https://proceedings.neurips.cc/paper_files/paper/2023/hash/1b44b878bb782e6954cd888628510e90-Abstract-Conference.html)是一个为智能体提供动态记忆和自我反思能力从而提升智能体推理能力的框架。如下图所示，Reflexion框架中有三个角色，分别是Actor,Evaluator,Self-Reflection， 其中Actor模型基于观察到的环境和生成文本和动作，动作空间遵循ReAct中的设置，在ReActReAct中，特定任务的动作空间用语言扩展，以实现复杂的推理步骤。然后生成的这些文本和动作轨迹由Evaluator进行评估，比如用0,1来表示好坏，接着Self-Reflection会生成特定的文本反馈，提供更丰富、有效的反思并被存储到记忆中。最后，Actor会根据得到的记忆生成新的文本和动作直到完成任务。
 
-![Reflexion](src\AI-Agents\Reflexion.png)
+![Reflexion](assets/AI-Agents/Reflexion.png)
 
 <center>*图 4: Reflexion 框架。*</center>
 
- 	论文中提到，在序列决策任务**ALFWorld**上，为了实现自动化评估采用了两个技术：1.用LLM进行二分类 2.人工写的启发式规则检测错误。对于后者，简单来说就是 如果智能化执行相同操作并收到相同响应超过3个周期，或者当前环境中的操作次数超过30次(计划不高效)，就进行自我反思。
+​	论文中提到，在序列决策任务**ALFWorld**上，为了实现自动化评估采用了两个技术：1.用LLM进行二分类 2.人工写的启发式规则检测错误。对于后者，简单来说就是 如果智能化执行相同操作并收到相同响应超过3个周期，或者当前环境中的操作次数超过30次(计划不高效)，就进行自我反思。
 
   $\text{Chain of Hindsight(CoH)}$.[[8]](https://arxiv.org/abs/2302.02676)是一种引入了人类偏好的训练方法，该方法不仅使用正面反馈数据，还利用了负面反馈数据，此外在模型预测时引入了反馈条件 ，使模型可以根据反馈学习并生成更符合人类偏好的内容。但$\text{CoT}$利用了序列形式的反馈，在训练时给模型提供更丰富的信息，具体如下：
 
@@ -102,11 +102,11 @@ Final Answer: the final answer to the original input question
 # How to explain a neural network to a 6-year-old kid? Bad:{a subpar answer} Good:{a good answer}.
 ```
 
- 	这样的数据拼接格式能组合不同种类的反馈，从而提升模型性能。在推理阶段，我们只需要在prompt中给模型指定好Good就能引导模型生成高质量的结果。 此外，在训练时并不是所有的token都纳入损失函数计算，feedback token即Good or Bad只用来提示模型接下来预测时生成质量好的内容还是差的内容，具体损失函数公式如下：
+​	这样的数据拼接格式能组合不同种类的反馈，从而提升模型性能。在推理阶段，我们只需要在prompt中给模型指定好Good就能引导模型生成高质量的结果。 此外，在训练时并不是所有的token都纳入损失函数计算，feedback token即Good or Bad只用来提示模型接下来预测时生成质量好的内容还是差的内容，具体损失函数公式如下：
 $$
 \begin{aligned} \log p(\mathbf{x})=\log \prod_{i=1}^{n} \mathbb{1}_{O(x)}\left(x_{i}\right) p\left(x_{i} \mid\left[x_{j}\right]_{j=0}^{i-1}\right) \end{aligned} \tag{1}
 $$
-​		其中$\mathbb{1}_{O(x)}$是指示函数，如果$x_i$属于$\text{feedback token(Good or Bad)}$，则取值为$0$，反之为$1$。人类反馈数据，并不止单纯是先前所表述的只有$\text{Good or Bad}$，它可以是更广义的形式，我们可以记作$D_h=\{q,a_i,r_i,z_i\}^{n}_{i=1}$，$q,a_i$分别是问题和答案，$r_i$是答案的评级高低，$z_i$则是人类提供的事后反馈。假设反馈的评级由低到高排的顺序是$r_{n} \geq r_{n-1} \geq \cdots \geq r_{1}$,那么在微调时数据拼接的形式如下：$d_h=(q,z_i,a_i,z_j,a_j,\cdots,z_n,a_n),(i\leq j\leq n)$，训练时模型只会根据给定的前缀预测$a_n$，使得模型能够自我反映以基于反馈序列产生更好的输出。（笔者用小样本``900条数据``在7B级别的LLM上尝试微调时，发现如果反馈评级和回答$z_i,a_i,z_j,a_j,...,z_n,a_n$按照顺序排列，那么模型在推理时没法较好地适配不同反馈前缀，即生成的内容与反馈指定的预期的内容不符。比如$\text{feedback token}$分别是“非提问式共情”和“提问式共情”，数据拼接格式为$\text{“}q,\underbrace{非提问式共情}_{\text{feedback token}}a_1,\underbrace{提问式共情}_{\text{feedback token}}a_2\text{”}$。模型在预测时即便给定了不同的$\text{feedback token}$，其对于提问式共情的感知能力仍然不足，一直会进行非提问式共情。）因此笔者猜测如果采用小批量数据在规模较小的模型上训练会导致位置偏差(Position Bias)，如果能把不同评级的训练数据打乱或许能增强模型的泛化能力，促使模型理解不同$\text{feedback token}$代表的含义而不是仅仅记住其位置特性。
+​	其中$\mathbb{1}_{O(x)}$是指示函数，如果$x_i$属于$\text{feedback token(Good or Bad)}$，则取值为$0$，反之为$1$。人类反馈数据，并不止单纯是先前所表述的只有$\text{Good or Bad}$，它可以是更广义的形式，我们可以记作$D_h=\{q,a_i,r_i,z_i\}^{n}_{i=1}$，$q,a_i$分别是问题和答案，$r_i$是答案的评级高低，$z_i$则是人类提供的事后反馈。假设反馈的评级由低到高排的顺序是$r_{n} \geq r_{n-1} \geq \cdots \geq r_{1}$,那么在微调时数据拼接的形式如下：$d_h=(q,z_i,a_i,z_j,a_j,\cdots,z_n,a_n),(i\leq j\leq n)$，训练时模型只会根据给定的前缀预测$a_n$，使得模型能够自我反映以基于反馈序列产生更好的输出。（笔者用小样本``900条数据``在7B级别的LLM上尝试微调时，发现如果反馈评级和回答$z_i,a_i,z_j,a_j,...,z_n,a_n$按照顺序排列，那么模型在推理时没法较好地适配不同反馈前缀，即生成的内容与反馈指定的预期的内容不符。比如$\text{feedback token}$分别是“非提问式共情”和“提问式共情”，数据拼接格式为$\text{“}q,\underbrace{非提问式共情}_{\text{feedback token}}a_1,\underbrace{提问式共情}_{\text{feedback token}}a_2\text{”}$。模型在预测时即便给定了不同的$\text{feedback token}$，其对于提问式共情的感知能力仍然不足，一直会进行非提问式共情。）因此笔者猜测如果采用小批量数据在规模较小的模型上训练会导致位置偏差(Position Bias)，如果能把不同评级的训练数据打乱或许能增强模型的泛化能力，促使模型理解不同$\text{feedback token}$代表的含义而不是仅仅记住其位置特性。
 
 ```markdown
 # 我最近心情很糟糕 非提问式共情:{听起来你真的很难受呢} 提问式共情:{我真是替你感到难过，请问你现在赶紧怎样呢？想和我聊一聊吗？}.
@@ -114,7 +114,7 @@ $$
 
 ​	在训练中，由于模型在预测时条件化了另一个模型输出及其反馈，因此可能会简单地“复制”已提供的示例，而不是真正理解任务。 为了防止模型只“复制”示例而不学习任务，作者在训练时随机掩盖了$0\%$到$5\%$的历史$\text{token}$。这意味着模型无法直接看到这些$\text{token}$，从而需要真正地理解上文，而不是简单地复制，这种随机掩盖增加了模型的泛化能力。
 
-![CoT](src\AI-Agents\CoT.png)
+![CoT](assets/AI-Agents/CoT.png)
 
 <center>*图 5: Chain of Hindsight论文实验。*</center>
 
@@ -129,13 +129,11 @@ user:我今天心情不好。</s>assistant:请问发生什么了宝贝?
 user:我今天心情不好。</s>assistant:<good answer>:请问发生什么了宝贝?<bad answer>:我理解你的感受。
 ```
 
-![image-20241029105729307](E:\Study\知识构建\NLP系列\assets\image-20241029105729307.png)
+![chain-of-hindsight](assets/AI-Agents/chain-of-hindsight.png)
 
 <center>*图 6: Chain of Hindsight模式下的token拼接。*</center>
 
 缺点：部署模型推理服务时不能直接使用Tokenizer提供的```apply_chat_template```的方法，需要工程师自定义实现多轮对话的拼接方式。
-
-原论文提供了jax的实现，代码在[Github](https://github.com/haoliuhl/chain-of-hindsight/blob/main/coh/coh_train_gptj.py)，笔者根据自己的理解基于Pytorch实现的代码链接[如下](https://github.com/YanZiBuGuiCHunShiWan/LLM_training)。
 
 # 2.Memory(记忆)
 
@@ -163,7 +161,7 @@ user:我今天心情不好。</s>assistant:<good answer>:请问发生什么了�
 
 ​	**MemoryBank** [[10]](https://ojs.aaai.org/index.php/AAAI/article/view/29946)聚焦于如何为大语言模型（LLMs）设计高效的**长期记忆机制**。该研究旨在解决当前生成式 AI 在长期对话中记忆能力有限的问题。通过设计一套基于外部记忆存储的系统，MemoryBank 可以让LLM回顾历史交互，逐渐增强对上下文的理解并适应和用户过往的交互对话，逐渐增强在长期交互场景下的对话表现。其根据艾宾浩斯遗忘曲线理论设计了一个和人类认知过程相似的动态记忆机制，可以让LLM随着时间流逝记忆、选择性遗忘或强化记忆。**MemoryBank**是一个围绕三个核心支柱构成的统一机制：（1）记忆存储（2）记忆检索（3）记忆更新。
 
-![image-20241118091018866](E:\Study\知识构建\NLP系列\assets\image-20241118091018866.png)
+![memory-bank](assets/AI-Agents/memory-bank.png)
 
 <center>*图 7: MemoryBank框架。*</center>
 
@@ -212,7 +210,7 @@ Rating: <fill in>"""
 
 ​	**Recency（相关性）**为与当前情境相关的记忆对象分配更高的分数。例如，如果查询是某个学生正与同学讨论如何准备化学考试，那么与早餐相关的记忆对象的相关性应较低，而与老师和课业相关的记忆对象的相关性应较高。原文采用了语义相似度作为相关性的衡量，即通过预训练模型编码器将每条记忆文本编码为语义向量，通过计算记忆向量和当前查询向量的语义相似度来确定相关性。
 
-![image-20241118105509468](E:\Study\知识构建\NLP系列\assets\image-20241118105509468.png)
+![weight-similarity](assets/AI-Agents/weight-similarity.png)
 
 <center>*图 8: GenAI记忆流。*</center>
 
@@ -258,7 +256,9 @@ the above statements? (example format: insight
 (because of 1, 5, 3))"""
 ```
 
-​	这一过程生成了诸如以下的反思陈述：$\text{“克劳斯·穆勒致力于研究绅士化（基于1, 2, 8, 15）”。}$​，随后语言模型解析（从回复中抽取有意义的文本内容）并将该陈述作为反思存储在记忆流中，同时包括关于记忆对象的引用（笔者的理解是那些数字序号）。反思机制明确允许智能体不仅反思其观察到的内容，还可以反思其他反思。例如，上述关于克劳斯·穆勒的第二条陈述就是他之前进行的一次反思，而不是环境中的观察。因此，智能体可以生成反思树：树的叶节点代表基础观察记录（智能体的一系列行为），非叶节点则代表随着层级上升逐渐变得更抽象、更高层次的思想（比如反思），如下图所示：![image-20241118114930476](E:\Study\知识构建\NLP系列\assets\image-20241118114930476.png)
+​	这一过程生成了诸如以下的反思陈述：$\text{“克劳斯.穆勒致力于研究绅士化（基于1, 2, 8, 15）”。}$​，随后语言模型解析（从回复中抽取有意义的文本内容）并将该陈述作为反思存储在记忆流中，同时包括关于记忆对象的引用（笔者的理解是那些数字序号）。反思机制明确允许智能体不仅反思其观察到的内容，还可以反思其他反思。例如，上述关于克劳斯·穆勒的第二条陈述就是他之前进行的一次反思，而不是环境中的观察。因此，智能体可以生成反思树：树的叶节点代表基础观察记录（智能体的一系列行为），非叶节点则代表随着层级上升逐渐变得更抽象、更高层次的思想（比如反思），如下图所示：
+
+![reflection-tree](assets/AI-Agents/reflection-tree.png)
 
 <center>*图 9: GenAI不同层次记忆。*</center>
 
@@ -386,13 +386,13 @@ g_{n} & =g_{n-1}+\frac{1-e^{-t}}{1+e^{-t}}
 $$
 ​	最终通过设定一个召回阈值$k$确定当前的记忆是否要回忆。公式(8)的函数绘制如下（另$r$=1,$\alpha$和$t$是变量）：
 
-![image-20241118170422418](assets\image-20241118170422418.png)
+![func-plot](assets/AI-Agents/func-plot.png)
 
 <center>*图 10: p(t)函数绘制图像。*</center>
 
 ​	图中可以看到，假设固定住时间$t$，则随着$a$的增大，回顾的概率$p(t)$会减少，反之则增大，而$a$是一个与事件回忆频率变化的数，事件回忆次数越高，则$a$越小，同时也能表明这件事情比较重要，而被回顾的概率也就越高。论文中的实验部分展示该模型和Gen AI(斯坦福的AI小镇)的一些差异之处：
 
-![image-20241118175412825](assets\image-20241118175412825.png)
+![standford](assets/AI-Agents/Standford-agents-recall.png)
 
 <center>*图 11: 实验案例。*</center>
 
@@ -406,7 +406,7 @@ $$
 
 ​	该理论中，模式分离主要在记忆编码过程中完成。记忆编码首先由新皮质接收和处理感知刺激，将其转化为更易操作的（可能是更高层次的）特征，这些特征随后通过**海马旁回区域（PHR）**传递到海马体进行索引。当信号到达海马体时，显著的信号会被包含在海马索引中，并彼此关联。在记忆编码过程完成后，模式补全驱动记忆检索过程。当海马体通过 PHR 管道接收到部分感知信号时，海马体利用其**情境依赖的记忆系统**在海马索引中识别完整且相关的记忆，并通过 PHR 将其路由回新皮质进行模拟。因此，这一复杂过程仅改变海马索引来整合新信息，而无需更新新皮质的表征。	
 
-![image-20241122143343822](assets\image-20241122143343822.png)
+![hipporag](assets/AI-Agents/hipporag.png)
 
 <center>*图 12: HippoRAG结构示意。*</center>	
 
@@ -418,7 +418,7 @@ $$
 
 ​	让我们回顾PageRank算法的具体细节，将互联网的网页视作节点，从该网页跳转到其他网页的链接视作有向边，用户继续浏览网页时会等概率地（随机）点击当前网页中指出的链接从而跳转到另一个页面，而随着用户点击次数地增加，这一整个长期地随机跳转就会构成一个稳定的模式，即马尔可夫平稳过程，每个网页的PageRank值就对应平稳分布中的某个概率。给定一个有向图:
 
-![image-20250121094837215](E:\Study\知识构建\NLP系列\assets\image-20250121094837215.png)
+![dagraph](assets/AI-Agents/dagraph.png)
 
 <center>*图 13: PageRank示意图。(自绘)*</center>	
 
@@ -428,7 +428,7 @@ $$
 
 ​	而在HippoRAG中，将实体视作网页通过PageRank算法求解实体的PageRank向量的原理不变，将与Query有关联的实体检索得到若干个候选实体$\set{R_j}_{j=0}^{k}$，这些检索到的实体有对应的出边和入边，即其他实体和这些实体有关联。根据候选实体，我们可以利用个性化PageRank算法计算得到最终的PageRank向量$V_e=(e_i,e_2,...,e_M)^T$，而有了向量我们就可以利用向量空间模型计算实体向量与所有文档的相似程度，具体思想如下图：
 
-![image-20250121101832509](E:\Study\知识构建\NLP系列\assets\image-20250121101832509.png)
+![vector-space-model](assets/AI-Agents/vector-space-model.png)
 
 <center>*图 14 HippoRAG中文章相似度计算。（自绘）*</center>	
 
@@ -438,7 +438,7 @@ $$
 
 > [!NOTE]
 >
-> 在标注的PageRank算法中，增加初始分布某几个维度如$i,j,k$的概率并不能保证得到的平稳分布中的$i,j,k$维度的PageRank值一定是较大的，因为马氏链的平稳分布只与状态转移矩阵有关，不受初始化分布的影响，初始值只会影响收敛速度。而PageRank算法的变种如Personalized PageRank，初始分布可以影响最终的平稳分布。
+> 在标准的PageRank算法中，增加初始分布某几个维度如$i,j,k$的概率并不能保证得到的平稳分布中的$i,j,k$维度的PageRank值一定是较大的，因为马氏链的平稳分布只与状态转移矩阵有关，不受初始化分布的影响，初始值只会影响收敛速度。而PageRank算法的变种如Personalized PageRank，初始分布可以影响最终的平稳分布。
 
 ## 2.4 LLMs+Perona-Plug
 
@@ -466,7 +466,7 @@ $$
 $$
 ​	其中，$\operatorname{Emb_{LLM}(.)}$代表大语言模型的嵌入层，$\mathbf I$是一个额外的可训练的指令嵌入层，用于捕获指令信息。在微调时只有三个部分的参数是可以改变的：$\mathbf I$，输入编码器$\operatorname {Enc^{input}}(.)$和投影层$\operatorname {Proj}(.)$(两层MLP)。模型整体结构如下：
 
-![image-20241126114804400](assets\image-20241126114804400.png)
+![Peronal-Plug](assets/AI-Agents/Peronal-Plug.png)
 
 <center>*图 15: 模型结构。*</center>	
 
@@ -490,7 +490,7 @@ $$
 
 ​	同时，**LONGMEMEVAL**提供了一个构造连贯、可拓展且附带时间戳信息的对话方法，基准具体的构建流程如下图所示[源自[18]]()：
 
-![image-20241204174359691](assets\image-20241204174359691.png)
+![LongMemEval-Struct](assets/AI-Agents/LongMemEval-Struct.png)
 
 <center>*图 15: LongMemEval数据生成流程。*</center>	
 
@@ -504,7 +504,7 @@ $$
 
 ​	论文将长期记忆视作一个大容量的键值对存储数据库$[(k_1,v_1),(k_2,v_2),...]$，其中$k_i$可以是异构的，$v_i$可以重复，并为记忆增强的智能助手制定了三个阶段：（1）$indexing$ 将每一个历史对话$(t_i,S_i)$转化成一个或多个键值对，（2）$retrieval$ 构建一个检索的查询并收集$k$个与查询最相关的键值对，（3）$reading$，LLM通过阅读检索到的结果生成答案。具体如下图所示[源自[18]]()。
 
-![image-20241205093622837](assets\image-20241205093622837.png)
+![key-value-design](assets/AI-Agents/key-value-design.png)
 
 <center>*图 16: 检索系统设计。*</center>	
 
@@ -514,13 +514,15 @@ $$
 
 ​	$query$ 对于普通类型的查询而言，上述提及的$key\text{-}value$优化方式可能解决大部分检索问题，然而当查询涉及到时序信息时，简单的语义相似度或文本匹配度则可能不起效，因此论文设计了一个$time\text{-}aware\text{ }indexing$与$query\text{ }expansion$策略，$value$用有时间戳的事件进行索引，然后在相关时间范围内进行检索。
 
-​	$reading$ 回答一个复杂的问题可能需要召回大量的记忆，虽然检索的准确度可以更具上述的设计进行优化，但是不能保证LLM能够从召回结果中有效地推理出正确答案，论文们探索了不同的阅读策略，并通过实验结果表明如在回答前提取关键信息([Chain of Note]())和使用结构化格式提示([structured format prompting]())能有效提高阅读能力。	![image-20241205104805902](assets\image-20241205104805902.png)
+​	$reading$ 回答一个复杂的问题可能需要召回大量的记忆，虽然检索的准确度可以更具上述的设计进行优化，但是不能保证LLM能够从召回结果中有效地推理出正确答案，论文们探索了不同的阅读策略，并通过实验结果表明如在回答前提取关键信息([Chain of Note]())和使用结构化格式提示([structured format prompting]())能有效提高阅读能力。
+
+![LongMemEval-exp1](./assets/AI-Agents/LongMemEval-exp1.png)
 
 <center>*图 17: 问答效果对比实验。*</center>	
 
 ​	图六[源自[18]]()实验结果表明，在不同设计的$value$中，将Round作为$value$能够提升问答效果。如果将Session Summary当作$value$，那么效果比较差，原因可能是因为总结压缩了过多的信息，丢失了很多细节，而将Round Facts当做$value$的效果也相当不错，token数量为Round的一半左右在多会话子集上的效果超过了Round，原因可能是Round Facts是篇幅较短关键的信息，本身就能够代表当前Round的绝大部分含义。这里有一个细节，即图中显示Round的token数量的范围较大，而Session的token数量范围较为集中，按理来说Session是由每一个Round构成的，二者的token数量应该相同，因此这里的Session应只是$evidence\text{ }session$，而不是指整个历史聊天记录作为的session（```笔者已通过源码验证，读者可再自行确认```）。论文对不同的$key$的构造也进行了消融实验，具体如下图：
 
-![image-20250109201518199](assets\image-20250109201518199.png)
+![LongMemEval-exp2](assets/AI-Agents/LongMemEval-exp2.png)
 
 <center>*图 18: 不同key value模式组合实验结果。*</center>
 
@@ -528,13 +530,13 @@ $$
 
 ​	抽取每一轮的user fact可以通过zero shot prompting或者few shot prompting的方式让大语言模型完成，具体步骤是将当前的evidence session作为prompt的变量传入，大语言模型再根据传入的对话列表抽取出一些相关的facts放在列表中，如果没有则列表为空。示意图如下：
 
-![image-20241211141927275](assets\image-20241211141927275.png)
+![facts-extraction](assets/AI-Agents/facts-extraction.png)
 
 <center>*图 19: user facts抽取示意。（自绘）*</center>	
 
 ​	这些被抽取的usef fact将会被保存，用于检索时进行索引增强。而在检索完整的history时，只有evidence session部分会进行索引增强，其他由shareGPT与ultraGPT构成的对话由于没有facts，因此保持原有的样子。在index expansion时论文项目提供了几种不同的方案，如$separate$,$merge$,$replace$等，此处笔者给出$merge$方式的实现示意图：
 
-![image-20241211174746827](E:\Study\知识构建\NLP系列\assets\image-20241211174746827.png)
+![key-merge](assets/AI-Agents/key-merge.png)
 
 <center>图 20: Key Expansion示意。（自绘）</center>	
 
@@ -542,15 +544,13 @@ $$
 
 ## 2.6  现有记忆系统总结
 
-![image-20241205152504631](assets\image-20241205152504631.png)
+![memory-system](assets/AI-Agents/memory-system.png)
 
 <center>*图 20: 现有记忆系统模式。*</center>
 
 ​	LONGMEMEVAL列举了现有的研究中的记忆系统并标明了不同索引构建细节。HippoRAG构建了一个以实体为中心的索引，而RAPTOR与Memwalker则通过递归摘要构建了一个分层索引。虽然更复杂的记忆索引结构可能对某些类型的查询有益，但它们也增加了在线交互中创建和维护索引的成本。具体来说，Flat类型Retrieval在需要添加新的记忆时，可以利用向量检索工具如Faiss/Milvus等，只需直接写入对应记忆的语义向量即可。而对于**HippoRAG**、**RAPTOR**和**Memwalker**而言，当新会话添加到记忆中时，需要对这些系统进行一定程度的重新索引，从而增加了计算开销。像ChatGPT类似的闭源商用智能聊天助手的在长期记忆方面的实现机制细节暂且未知，其官网提供了一篇推文[[19]](https://openai.com/index/memory-and-new-controls-for-chatgpt/)可让用户对其记忆管理有一定的了解，在管理界面的个性化中可以点击管理按钮查看并编辑用户的聊天记忆，可以从下图看到ChatGPT存储的记忆以facts的形式存在，笔者通过询问包含时间方面的信息验证了一下其是否有时间感知的能力。
 
-![image-20241209105121777](assets\image-20241209105121777.png)
-
-![image-20241209110157622](assets\image-20241209110157622.png)
+![openai-time-aware](/assets/AI-Agents/openai-time-aware.png)
 
 <center>*图 21:ChatGPT记忆系统。（自绘）*</center>	
 
@@ -572,7 +572,7 @@ $$
 
 ​	人脑的长期记忆有两种，分别是语义记忆和情景记忆，语义记忆存储世界的一般知识，情景记忆则是个人经历与事件的记忆，[PerLTQA[20]]()旨在探索个性化的长期记忆在问答系统中的重要性和不同记忆类型的本质，其将个人资料与社交关系视作语义记忆，事件与对话视作情景记忆，并通过记忆分类、记忆检索与记忆综合三个子任务评估LLM的记忆利用能力。下图展示了笔者构造的长期记忆结构，在每日总结、每周总结与每月总结的基础上还有情景记忆与语义记忆。
 
-![image-20241213094232033](assets\image-20241213094232033.png)
+![custom-system](assets/AI-Agents/custom-system.png)
 
 <center>*图 22: 不同层次记忆。（自绘）*</center>	
 
@@ -589,13 +589,13 @@ $$
 
 ​	在实际场景中，每几轮对话就有可能蕴含较有价值的$userfacts$，以一天的聊天记录为例，我们可以将对话分轮次拆开先后进行用户事实抽取，比如以每10轮聊天对话进行抽取，如下笔者给出一个具体的提示工程案例：
 
-![image-20250109142430526](assets\image-20250109142430526.png)
+![user-facts-extraction](assets/AI-Agents/user-facts-extraction.png)
 
 <center>*图 23: 抽取user facts提示词示例。（自绘）*</center>		
 
 ​	即每10轮对话以变量的形式传入，由大语言模型抽取出对话中有价值的用户事实，并附带对应的轮次定位。将多轮对话传入是因为在一些情况下，有价值的用户事实可能需要经过多轮对话内容才能推理出来，更多的上下文有助于模型更精准地判断有价值的用户事实，而附带上用户事实的对应轮次信息则能用于定位与后继分析，下图为一个对应的例子和模型抽取结果：
 
-![image-20250109195025474](assets\image-20250109195025474.png)
+![image-20250109195025474](assets/AI-Agents/key-merge-schema.png)
 
 <center>*图 24: key Expansion与Value Reconstruction重构示意。（自绘）*</center>		
 
@@ -607,7 +607,9 @@ $$
 
 ​	记忆检索是为了从过往的情景记忆中检索出相关片段，在检索时可以考量语义相关性，时效性、事件本身重要性或其他信息，从而更精确地检索到与当前查询最相关的记忆片段，帮助智能体更准确地理解用户过往经历。可以先通过语义召回的方式检索出$k$个相关的情景记忆，再通过重排序机制从$k$个情景记忆中选取$m(m<k)$个最终的记忆。在Generative AI[11]、Hou[15]、Du[20]等人的研究中均提供了较为合理与新颖的记忆检索方法，笔者认为上述的方案其实已经能应付大多数场景了，但是抱着杠精的思想，其实不难发现，在GenerativeAI与Hou的工作中，前者的赋分方式为简单的加权平均，若超参数$\alpha,\beta,\gamma$设置任意一个不合理就可能会造成较大影响，如$\alpha$过大且时间过近时有可能导致召回出较多不相关片段，若$\beta$过大则会只召回语义类似的片段可能丢失潜在的重要信息，$\gamma$​过大则导致召回一些明面上很重要但与当前查询无关的片段。Hou的工作中没有考虑到事件的重要程度，Du的工作在对召回的记忆片段计算记忆所属类别概率时额外要求较大的计算资源。
 
-​	**记忆选择**人脑在回忆某件事情时检索的**语义记忆**和**情景记忆**的数量没有固定的上限或具体数值，而是受到多种认知和生理因素的影响，**认知科学研究**显示，人类短期内可以同时激活大约**5到9个概念**（即米勒的“7±2法则”），但大脑在长时间内可以动态地检索和切换更多的语义记忆节点。对情景记忆而言，在一次回忆中，人们通常能详细回忆大约**4到7个关键细节**，之后逐步唤起额外的细节。但大脑往往会聚焦于**几个关键片段**，并动态地选择要检索的细节[[22]](https://chatgpt.com/share/6762650a-b728-8004-a16b-1b849c2f6985)。笔者认为可以将动态规划中的经典的01背包问题用于记忆的筛选，具体细节如下：![image-20241216144452540](assets\image-20241216144452540.png)
+​	**记忆选择**人脑在回忆某件事情时检索的**语义记忆**和**情景记忆**的数量没有固定的上限或具体数值，而是受到多种认知和生理因素的影响，**认知科学研究**显示，人类短期内可以同时激活大约**5到9个概念**（即米勒的“7±2法则”），但大脑在长时间内可以动态地检索和切换更多的语义记忆节点。对情景记忆而言，在一次回忆中，人们通常能详细回忆大约**4到7个关键细节**，之后逐步唤起额外的细节。但大脑往往会聚焦于**几个关键片段**，并动态地选择要检索的细节[[22]](https://chatgpt.com/share/6762650a-b728-8004-a16b-1b849c2f6985)。笔者认为可以将动态规划中的经典的01背包问题用于记忆的筛选，具体细节如下：
+
+![dp](assets/AI-Agents/dp.png)
 
 <center>*图 23: 记忆选择与背包问题。（自绘）*</center>		
 
@@ -633,7 +635,7 @@ $$
 
 ​	关于离线规划什么？必须先明确目标，如在心理疏导场景下让智能助手主动发起话题，让用户感受到智能助手能主动地关心，建立更加稳固的关系，或是更精准地疏导用户。
 
-![image-20241216182019372](assets\image-20241216182019372.png)
+![image-20241216182019372](assets/AI-Agents/offline-planning.png)
 
 <center>*图 24: 这是图片的图例描述。（自绘）*</center>		
 
