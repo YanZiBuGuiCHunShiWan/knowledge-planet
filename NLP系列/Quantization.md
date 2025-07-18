@@ -1,4 +1,5 @@
-# 大模型量化
+- # 大模型量化
+
 
 # 1.基础
 
@@ -71,13 +72,46 @@ $$
 \mathbf W_{f16}^{h1} &\cdots & \mathbf W_{f16}^{ho}
 \end{bmatrix}\\
 \mathbf X_{f16}\mathbf W_{f16}&\approx \frac{1}{n d_{x_{f 16}}\cdot n d_{w_{f 16}}}\mathbf C_{i32}\\
-&\approx\frac{1}{n d_{x_{f 16}}\cdot n d_{w_{f 16}}}\mathbf X_{i8}\mathbf W_{i8}=S_{f16}\cdot Q(\mathbf X_{f16})Q(\mathbf W_{f16})\end{aligned}
+&\approx\frac{1}{n d_{x_{f 16}}\cdot n d_{w_{f 16}}}\mathbf A_{i8}\mathbf B_{i8}=S_{f16}\cdot Q(\mathbf X_{f16})Q(\mathbf W_{f16})\end{aligned}
 $$
-​	而量化算法面临的主要挑战是——每一个张量如果只用一个缩放因子，那么任何一个异常值都会降低其他值的量化精度。因此每个张量都应该有多个缩放因子。LLM.int8()提出了向量级量化技术，将张量拆解为独立向量块，每个向量块独立计算缩放因子。
+​	而量化算法面临的主要挑战是——每一个张量如果只用一个缩放因子，那么任何一个异常值都会降低其他值的量化精度。因此每个张量都应该有多个缩放因子。LLM.int8()提出了向量级量化技术，将张量拆解为独立向量块，每个向量块独立计算缩放因子。但对于动轴上百亿参数量的模型而言，向量量化并不够迅速，因此需要**混合精度分解**，即将少量高精度特征维度（占比≈0.1%）以16位精度表示，其余99.9%的数值则采用8位精度。
+
+### 2.1.1 向量量化
+
+​	将矩阵乘法可以看错序列化的向量乘法，将每个序列的向量内积都对应一个缩放因子那么就可以增加矩阵乘法的缩放因子个数。给定隐状态$\mathbf X_{f16}\in\mathbb R^{b\times h}$和参数矩阵$\mathbf W_{f16}\in \mathbb R^{h\times o}$，我们可以给隐状态每一行都分配一个缩放因子$c_{x_{f16}}$，给参数矩阵每一列都分配一个缩放因子$c_w$。因此量化矩阵乘法可以写成：
+$$
+\begin{aligned}Q(\mathbf X_{f16})Q(\mathbf W_{f16})=\mathbf A_{i8}\mathbf W_{i8}\end{aligned}
+$$
+​	而反量化后的结果$\mathbf C_{f_{16}}$需要在$\mathbf A_{i8}\mathbf W_{i8}$得到的结果上乘以缩放因子dequantize回来，笔者给一个简单的示意图（为方便表示，符号进行了变动）：
+
+![image-20250718154014364](E:\Study\gitpro\knowledge-planet\NLP系列\assets\image-20250718154014364.png)
+
+​	其中，$c_{xi}$代表输入的第$i$行的缩放因子，$c_{wj}$代表参数矩阵第$j$列的缩放因子。基于$\mathbf A_{i8}\mathbf W_{i8}$进行dequantize就是在量化后的矩阵上除以对应的缩放因子，即量化后的矩阵为$\mathbf D_{i8}$，则其第$i$行第$j$列的元素进行dequantize 就是乘以$1/{c_{xi}c_{wj}}$。因子还原后的$C_{f_{16}}$公式如下：
+$$
+\begin{aligned}\mathbf{C}_{f_{16}} &\approx \frac{1}{\mathbf{c}_{x_{f 16}} \otimes \mathbf{c}_{w_{f 16}}} \mathbf{C}_{i 32}=\mathbf{S} \cdot \mathbf{A}_{i 8} \mathbf{B}_{i 8}=\mathbf{S} \cdot Q\left(\mathbf{A}_{f 16}\right) Q\left(\mathbf{B}_{f 16}\right)\\
+&\approx \mathrm{Diag(\mathbf{C}_{x_{f16}}^{-1})}\mathbf{A}_{i 8} \mathbf{B}_{i 8}\mathrm{Diag(\mathbf{C}_{w_{16}}^{-1})}\end{aligned}
+$$
+​	那么知道了向量量化的具体过程，我们就可以找到那些存在较大值的维度，即将维度分成两部分，一部分是极大值能显著影响模型性能的，这一部分不需要量化防止模型性能降低，将异常值维度放进集合$O$，即$O=\{i|i\in \mathbb Z,0\leq i\leq h\}$​，而另一部分不存在异常值的维度则可以进行量化并储存好缩放因子，在推理时进行dequantize，整个混合精度矩阵乘法公式定义如下：
+$$
+\begin{aligned} \mathbf {C_{f16}} \approx \sum_{h\in O}\mathbf X_{f16}^{h}\mathbf W_{f16}^{h}+\mathbf S_{f16}\cdot\sum_{h\notin O}\mathbf X_{i8}^{h}\mathbf W_{i8}^{h}\end{aligned}
+$$
+​	那异常值维度如何找到？我们定义一个特征维度为异常值维度如果满足以下条件：（1）至少在$25\%$的序列维度中；（2）至少出现在$50\%$层中；（3）该维度幅值大于等于$6$。也就是说每一层的异常值检测 仅依赖于当前层的输入 （即上一层的输出），而不需要预知后续层的激活状态。
+
+
+
+
+
+​	**显存减少的来源：**（1）激活值。（2）权重。
 
 ## 2.2 SmoothQuant
 
+​	动机是什么？xx现象。
 
+​	阐明现象的体现以及造成该现象的原因。
+
+​	解决方案。
+
+​	潜在缺陷。
 
 
 
