@@ -6,7 +6,7 @@
 
 ​	Point-Wise Ranking 是学习排序的一类方法，它把排序任务视为 **回归或分类问题**。因此通常采样$\text{BCE Loss}$或者$\text{Focal Loss}$作为策略，以文档排序的场景为例，我们用BERT作为Cross Encoder捕获查询和文档间细粒度的语义交互，给定一个查询$query_i$、相关的文档$doc_i^+$（这里笔者假定只有一个相关文档，实际上可以有多个）和对应的$m$个候选文档$doc_{ij}^-,j=1,\ldots,m$，将$query_i$和对应的文档通过特殊符号$\text{[CLS][SEP]}$拼接后作为BERT的输入，由可训练的线性层$\mathbf W$映射后再经过$\operatorname{sigmoid}$函数得到对应的分数$s_i$，对于正样本的得分$s_i$，应该越接近$1$越好，对于负样本得分$s_j$，应该越接近$0$越好。如下图：
 
-![image-20250701180409168](assets/image-20250701180409168.png)
+![image-20250701180409168](assets/learning2rank/pointwise.png)
 
 ​	Point-Wise 把排序问题当作 **独立的回归或分类任务** 来做，预测每个样本的分值或概率。但排序真正关心的是 **文档之间的相对顺序**（比如NDCG、MAP、MRR 等），Point-Wise 并没有直接针对这些指标优化，因此即便模型预测的分值接近真实分值，也可能导致最终的排序顺序完全错误。此外，Point-Wise损失函数通常不能反映“局部排序错误”的严重程度，如把排名第$1$的文档得分预测稍低一些，导致其拍到了后几位，损失函数依然非常小，但是上线后用户体验和位置有关的衡量指标都很差。如果训练集中有大量负样本，模型可能只学会输出低分来降低损失，即便是类别加权的损失也难以将模型改进到正常水平。
 
@@ -40,7 +40,7 @@ $$
 $$
 ​	$\sigma=1$时的损失函数图像如下（自变量为$s_i-s_j$）：
 
-![image-20250702163213780](assets/image-20250702163213780.png)
+![image-20250702163213780](assets/learning2rank/RankNet.png)
 
 ​	假设$s_i=\mathbf x_i^{\top}\mathbf w,s_j=\mathbf x_i^{\top}\mathbf w$，$\mathbf w\in \mathbf R^{h\times 1}$我们可以看一参数更新公式，以$w_k$（$\mathbf w$的第$k$个分量）为例：
 $$
@@ -91,7 +91,7 @@ $$
 $$
 ​	意思是对于某个文档$doc_i$，先找到相关性不如它的那些文档$doc_j$，此时可以算出一个向上的叠加的推力即$\begin{aligned}\sum_{j:\{i,j\}\in I}\lambda_{ij}\end{aligned}$，同时也会有其他相关性比$doc_i$高的文档，此时$doc_i$上会有一个向下的叠加的拉力即$\begin{aligned}-\sum_{j:\{j,i\}\in I}\lambda_{ji}\end{aligned}$。更直观一点，给定$5$个文档，假定关系如下：
 
-![image-20250703105259182](assets/image-20250703105259182.png)
+![image-20250703105259182](assets/learning2rank/doc-preference.png)
 
 ​	那么针对每一个文档$doc_i$，需要计算的$\lambda_{ij}$、$\lambda_{ji}$与$\frac{\partial s_i}{\partial w_k}$如下表：
 
@@ -278,7 +278,7 @@ $$
 
 ​	通过Top1概率，给定一个真实标签的概率分布$\mathbf P_{\mathbf r}^{(i)}$和模型输出的概率分布$\mathbf P_{\mathbf s}^{(i)}$，我们就可以用一个度量分布的指标作为损失函数，这里笔者沿用论文中的符号，查询$q^{(i)}$对应的候选文档集合为$\mathbf d^{(i)}=\set{d^{(i)}_{1},...,d_{n^{(i)}}^{(i)}}$，查询$q^{(i)}$对应文档集合的人工标记相关性分数向量记作$\mathbf r^{(i)}=(r^{(i)}_{1},...,r^{(i)}_{n^{(i)}})$，模型预测的输出为$\mathbf s^{(i)}=(s^{(i)}_{1},...,s^{(i)}_{n^{(i)}})$，我们看一下ListNet模型的损失函数：
 
-![image-20250709153714737](assets/image-20250709153714737.png)
+![image-20250709153714737](assets/learning2rank/ListNet.png)
 
 ​	假设在标注阶段的每一个文档的相关性分数都是确切的，查询$q^{(i)}$标签的概率分布记作$\mathbf P_{\mathbf r}^{(i)}=(P_{r^{(i)}}(1),...,P_{r^{(i)}}(n))^{\top}$，模型输出的概率分布记作$\mathbf P_{\mathbf s}^{(i)}=(P_{s^{(i)}}(1),...,P_{s^{(i)}}(n))^{\top}$，前者是目标分布，后者是真实分布，我们可以找一个度量分布的函数作为损失函数，KL散度。若采用KL散度作为损失，则$\operatorname{D}_{KL}(\mathbf P_{\mathbf r}^{(i)}||\mathbf P_{\mathbf s}^{(i)})$表达如下：
 $$
@@ -679,7 +679,7 @@ $$
 $$
 ​	$\mathrm{OPO}$列举了不同反馈标注形式下的工作、类型及优化目标，如下图：
 
-![image-20250709143803491](assets/image-20250709143803491.png)
+![image-20250709143803491](assets/learning2rank/dpo-list.png)
 
 ​	此外，$\mathrm{OPO}$基于$\text{UltraFeedback}$和$\text{SimPO}$构建了一个有序奖励的数据集，并通过实验结果表明使用多样化的负样本比仅使用最低质量的回答作为负样本更能够提升模型性能。
 
