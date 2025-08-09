@@ -131,6 +131,12 @@ $$
 
 # 2. Learn at Test Time
 
+## 2.1 Fast Weights & Meta-Learning 
+
+
+
+## 2.2 Test Time Training
+
 
 
 
